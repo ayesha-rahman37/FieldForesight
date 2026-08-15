@@ -2,10 +2,12 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Fallback to local SQLite database if DATABASE_URL is not set
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./field_foresight.db")
 
-# SQLite requires check_same_thread=False
+# Fix Heroku/Render legacy postgres:// scheme for SQLAlchemy 1.4+
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False

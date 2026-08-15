@@ -1,10 +1,8 @@
 from models import Variety, RiskThreshold
 from schemas import WeatherScenario, RiskEvaluationResult
 
+
 def evaluate_metric_risk(val: float, low_max: float, med_max: float, high_max: float) -> tuple[float, str]:
-    """
-    Returns (risk_score_0_100, risk_level_str)
-    """
     if val <= low_max:
         score = (val / low_max) * 25.0 if low_max > 0 else 10.0
         return min(max(score, 5.0), 25.0), "LOW"
@@ -17,49 +15,42 @@ def evaluate_metric_risk(val: float, low_max: float, med_max: float, high_max: f
         score = 50.0 + ((val - med_max) / range_span) * 25.0
         return min(max(score, 50.0), 75.0), "HIGH"
     else:
-        # Critical risk
         excess = val - high_max
         score = 75.0 + min(excess * 5.0, 25.0)
         return min(score, 100.0), "CRITICAL"
 
 
 def evaluate_risk(variety: Variety, scenario: WeatherScenario, custom_thresholds: list[RiskThreshold] = None) -> RiskEvaluationResult:
-    # Default thresholds derived from Variety parameters if no explicit RiskThreshold entry
-    temp_low = variety.optimal_temp_min
-    temp_med = variety.optimal_temp_max
-    temp_high = variety.max_temp_threshold
+    temp_low = variety.optimal_temp_min or 20.0
+    temp_med = variety.optimal_temp_max or 32.0
+    temp_high = variety.max_temp_threshold or 36.0
 
-    rain_low = variety.rainfall_min_mm
-    rain_med = (variety.rainfall_min_mm + variety.rainfall_max_mm) / 2.0
-    rain_high = variety.rainfall_max_mm
+    rain_min = variety.rainfall_min_mm or 100.0
+    rain_max = variety.rainfall_max_mm or 300.0
 
-    # Pest multiplier based on variety susceptibility
+    susc_key = (variety.pest_susceptibility or "Medium").title()
     pest_susceptibility_mult = {
         "Low": 0.8,
         "Medium": 1.0,
         "High": 1.3
-    }.get(variety.pest_susceptibility, 1.0)
+    }.get(susc_key, 1.0)
 
-    # 1. Temperature Risk
     temp_score, temp_level = evaluate_metric_risk(scenario.temperature, temp_low, temp_med, temp_high)
     if scenario.temperature < temp_low - 5.0:
-        # Cold stress
         temp_score = min(75.0, temp_score + 35.0)
         temp_level = "HIGH" if temp_score < 80 else "CRITICAL"
 
-    # 2. Rainfall / Drought Risk
-    if scenario.rainfall < variety.rainfall_min_mm * 0.4:
-        rain_score, rain_level = 85.0, "CRITICAL"  # Severe drought
-    elif scenario.rainfall < variety.rainfall_min_mm:
-        rain_score, rain_level = 60.0, "HIGH"      # Moderate drought
-    elif scenario.rainfall > variety.rainfall_max_mm * 1.5:
-        rain_score, rain_level = 88.0, "CRITICAL"  # Excessive flooding
-    elif scenario.rainfall > variety.rainfall_max_mm:
-        rain_score, rain_level = 65.0, "HIGH"      # Heavy rainfall
+    if scenario.rainfall < rain_min * 0.4:
+        rain_score, rain_level = 85.0, "CRITICAL"
+    elif scenario.rainfall < rain_min:
+        rain_score, rain_level = 60.0, "HIGH"
+    elif scenario.rainfall > rain_max * 1.5:
+        rain_score, rain_level = 88.0, "CRITICAL"
+    elif scenario.rainfall > rain_max:
+        rain_score, rain_level = 65.0, "HIGH"
     else:
         rain_score, rain_level = 15.0, "LOW"
 
-    # 3. Humidity Risk (High humidity > 85% increases fungal blast risk)
     if scenario.humidity > 85.0:
         hum_score, hum_level = 75.0, "HIGH"
     elif scenario.humidity > 75.0:
@@ -67,11 +58,9 @@ def evaluate_risk(variety: Variety, scenario: WeatherScenario, custom_thresholds
     else:
         hum_score, hum_level = 15.0, "LOW"
 
-    # 4. Pest Risk
     effective_pest = scenario.pest_density * pest_susceptibility_mult
     pest_score, pest_level = evaluate_metric_risk(effective_pest, 10.0, 25.0, 40.0)
 
-    # 5. Wind Risk
     if scenario.wind_speed > 35.0:
         wind_score, wind_level = 85.0, "CRITICAL"
     elif scenario.wind_speed > 25.0:
@@ -79,7 +68,6 @@ def evaluate_risk(variety: Variety, scenario: WeatherScenario, custom_thresholds
     else:
         wind_score, wind_level = 15.0, "LOW"
 
-    # Weighted overall score
     overall_score = round(
         0.30 * temp_score +
         0.25 * rain_score +
@@ -97,19 +85,18 @@ def evaluate_risk(variety: Variety, scenario: WeatherScenario, custom_thresholds
     else:
         overall_level = "LOW"
 
-    # Triggered Warnings in Bangla
     warnings = []
     if temp_level in ["HIGH", "CRITICAL"]:
         if scenario.temperature > temp_high:
-            warnings.append(f"উচ্চ তাপমাত্রা সসংকেত: {scenario.temperature}°C (সহনশীলতা {temp_high}°C এর বেশি)")
+            warnings.append(f"উচ্চ তাপমাত্রা সংকেত: {scenario.temperature}°C (সহনশীলতা {temp_high}°C এর বেশি)")
         else:
             warnings.append(f"নিম্ন তাপমাত্রা সংকেত: {scenario.temperature}°C (আদর্শ সর্বনিম্ন {temp_low}°C)")
 
     if rain_level in ["HIGH", "CRITICAL"]:
-        if scenario.rainfall < variety.rainfall_min_mm:
-            warnings.append(f"খরা ঝুঁকি সসংকেত: বৃষ্টিপাত {scenario.rainfall} মিমি (প্রয়োজনীয় ন্যূনতম {variety.rainfall_min_mm} মিমি)")
+        if scenario.rainfall < rain_min:
+            warnings.append(f"খরা ঝুঁকি সংকেত: বৃষ্টিপাত {scenario.rainfall} মিমি (প্রয়োজনীয় ন্যূনতম {rain_min} মিমি)")
         else:
-            warnings.append(f"অতিবৃষ্টি/প্লাবন সংকেত: বৃষ্টিপাত {scenario.rainfall} মিমি (সর্বোচ্চ সহনশীলতা {variety.rainfall_max_mm} মিমি)")
+            warnings.append(f"অতিবৃষ্টি/প্লাবন সংকেত: বৃষ্টিপাত {scenario.rainfall} মিমি (সর্বোচ্চ সহনশীলতা {rain_max} মিমি)")
 
     if pest_level in ["HIGH", "CRITICAL"]:
         warnings.append(f"বালাই আক্রমণ ঝুঁকি: পোকার ঘনত্ব {scenario.pest_density}/মি² (জাতের অতিসংবেদনশীলতা: {variety.pest_susceptibility})")

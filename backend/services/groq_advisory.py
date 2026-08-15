@@ -1,26 +1,27 @@
 import os
 import json
+import logging
 from dotenv import load_dotenv
 from models import Variety
 from schemas import WeatherScenario, RiskEvaluationResult
 from groq import Groq
 
 load_dotenv()
+logger = logging.getLogger(__name__)
+
 
 def get_groq_client():
     api_key = os.getenv("GROQ_API_KEY", "")
     if api_key:
         try:
             return Groq(api_key=api_key)
-        except Exception:
+        except Exception as err:
+            logger.warning("Failed to initialize Groq client: %s", err)
             return None
     return None
 
+
 def generate_fallback_bangla_advisory(variety: Variety, eval_result: RiskEvaluationResult) -> dict:
-    """
-    Generates deterministic, highly practical Bangla agricultural advisory
-    when Groq API key is omitted or service is unavailable.
-    """
     risk_level = eval_result.risk_level
     scenario = eval_result.scenario
 
@@ -28,7 +29,6 @@ def generate_fallback_bangla_advisory(variety: Variety, eval_result: RiskEvaluat
     irrigation_advice = ""
     pest_advice = ""
 
-    # Irrigation Advice
     if scenario.rainfall < variety.rainfall_min_mm:
         irrigation_advice = (
             f"ক্ষেতে পর্যাপ্ত রসের অভাব রয়েছে (বৃষ্টিপাত {scenario.rainfall} মিমি)। "
@@ -46,7 +46,6 @@ def generate_fallback_bangla_advisory(variety: Variety, eval_result: RiskEvaluat
         irrigation_advice = "মাটিতে স্বাভাবিক সেচ পরিস্থিতি বজায় রাখুন। অতিরিক্ত সেচ দেওয়ার প্রয়োজন নেই।"
         action_items.append("মাটিতে প্রয়োজনীয় আদ্রতা নিয়মিত পর্যবেক্ষণ করুন।")
 
-    # Pest Advice
     if eval_result.metric_levels.get("pest_density") in ["HIGH", "CRITICAL"] or scenario.humidity > 80:
         pest_advice = (
             f"উচ্চ আর্দ্রতা ({scenario.humidity}%) ও পোকার ঘনত্বের কারণে ব্লাস্ট রোগ ও বাদামী গাছফড়িং (কারেন্ট পোকা) "
@@ -57,7 +56,6 @@ def generate_fallback_bangla_advisory(variety: Variety, eval_result: RiskEvaluat
         pest_advice = "বর্তমানে বালাই ঝুঁকি সহনশীল মাত্রায় আছে। নিয়মিত শতকরা ৫টি আলো ফাঁদ বসিয়ে পর্যবেক্ষণ করুন।"
         action_items.append("সকালে ও বিকালে মাঠ ঘুরে শস্যের পাতা পর্যবেক্ষণ করুন।")
 
-    # General Advisory Text
     if risk_level == "CRITICAL":
         advisory_text = (
             f"জরুরী কৃষি পূর্বাভাস ({variety.name_bangla}): আবহাওয়া পরিস্থিতি অত্যন্ত ঝুঁকিপূর্ণ! "
@@ -85,7 +83,7 @@ def generate_fallback_bangla_advisory(variety: Variety, eval_result: RiskEvaluat
         "action_items_bn": action_items,
         "irrigation_advice_bn": irrigation_advice,
         "pest_advice_bn": pest_advice,
-        "llm_provider": "Rule-Engine Local Fallback"
+        "llm_provider": "Rule Engine Fallback"
     }
 
 
@@ -118,7 +116,7 @@ def generate_bangla_advisory(variety: Variety, eval_result: RiskEvaluationResult
 - বাতাসের গতি: {eval_result.scenario.wind_speed} কিমি/ঘণ্টা
 - পোকার ঘনত্ব: {eval_result.scenario.pest_density} পোকা/মি²
 
-সনাক্তকৃত সসংকেতসমূহ:
+সনাক্তকৃত সংকেতসমূহ:
 {json.dumps(eval_result.triggered_warnings, ensure_ascii=False)}
 
 কৃষকদের জন্য স্পষ্ট, বাস্তবসম্মত বাংলা কৃষি পরামর্শ ও ৩টি সুনির্দিষ্ট পদক্ষেপ তৈরি করুন।
@@ -134,10 +132,19 @@ def generate_bangla_advisory(variety: Variety, eval_result: RiskEvaluationResult
             temperature=0.4,
             response_format={"type": "json_object"}
         )
-        content = response.choices[0].message.content
+        content = response.choices[0].message.content.strip()
+        # Clean potential markdown wrapping (e.g. ```json ... ```)
+        if content.startswith("```"):
+            lines = content.splitlines()
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            content = "\n".join(lines).strip()
+
         parsed = json.loads(content)
         parsed["llm_provider"] = "Groq Llama-3.3 70B"
         return parsed
-    except Exception as e:
-        print(f"Groq API Error: {e}. Switching to rule fallback.")
+    except Exception as err:
+        logger.error("Groq API error during advisory generation: %s", err)
         return generate_fallback_bangla_advisory(variety, eval_result)
