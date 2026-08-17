@@ -88,27 +88,27 @@ def evaluate_risk(variety: Variety, scenario: WeatherScenario, custom_thresholds
     warnings = []
     if temp_level in ["HIGH", "CRITICAL"]:
         if scenario.temperature > temp_high:
-            warnings.append(f"উচ্চ তাপমাত্রা সংকেত: {scenario.temperature}°C (সহনশীলতা {temp_high}°C এর বেশি)")
+            warnings.append(f"High Temperature Alert: {scenario.temperature}°C (Exceeds variety tolerance limit of {temp_high}°C)")
         else:
-            warnings.append(f"নিম্ন তাপমাত্রা সংকেত: {scenario.temperature}°C (আদর্শ সর্বনিম্ন {temp_low}°C)")
+            warnings.append(f"Low Temperature Alert: {scenario.temperature}°C (Below optimal minimum of {temp_low}°C)")
 
     if rain_level in ["HIGH", "CRITICAL"]:
         if scenario.rainfall < rain_min:
-            warnings.append(f"খরা ঝুঁকি সংকেত: বৃষ্টিপাত {scenario.rainfall} মিমি (প্রয়োজনীয় ন্যূনতম {rain_min} মিমি)")
+            warnings.append(f"Drought Risk Alert: Rainfall {scenario.rainfall} mm (Below required minimum {rain_min} mm)")
         else:
-            warnings.append(f"অতিবৃষ্টি/প্লাবন সংকেত: বৃষ্টিপাত {scenario.rainfall} মিমি (সর্বোচ্চ সহনশীলতা {rain_max} মিমি)")
+            warnings.append(f"Excessive Rainfall / Flood Alert: Rainfall {scenario.rainfall} mm (Exceeds maximum tolerance {rain_max} mm)")
 
     if pest_level in ["HIGH", "CRITICAL"]:
-        warnings.append(f"বালাই আক্রমণ ঝুঁকি: পোকার ঘনত্ব {scenario.pest_density}/মি² (জাতের অতিসংবেদনশীলতা: {variety.pest_susceptibility})")
+        warnings.append(f"Pest Outbreak Risk: Pest density {scenario.pest_density}/m² (Variety susceptibility: {variety.pest_susceptibility})")
 
     if hum_level in ["HIGH", "CRITICAL"]:
-        warnings.append(f"উচ্চ আর্দ্রতা সতর্কতা: {scenario.humidity}% (ছত্রাকজনিত ব্লাস্ট রোগের উচ্চ ঝুঁকি)")
+        warnings.append(f"High Humidity Warning: {scenario.humidity}% (Elevated risk of fungal & blast infections)")
 
     if wind_level in ["HIGH", "CRITICAL"]:
-        warnings.append(f"তীব্র বাতাস সতর্কতা: {scenario.wind_speed} কিমি/ঘণ্টা (ধান হেলে পড়ার বা শস্য ক্ষতির সম্ভাবনা)")
+        warnings.append(f"Strong Wind Warning: {scenario.wind_speed} km/h (Risk of crop lodging and physical damage)")
 
     if not warnings:
-        warnings.append("আবহাওয়া পরিস্থিতি স্বাভাবিক ও অনুকূল রয়েছে।")
+        warnings.append("Weather conditions are normal and favorable.")
 
     return RiskEvaluationResult(
         variety_id=variety.id,

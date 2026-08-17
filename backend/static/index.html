@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FieldForesight | Smart Agricultural Risk Forecaster & Advisory</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js for Forecasts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Top Navigation Header -->
+    <header class="top-nav">
+      <div class="brand-group">
+        <div class="brand-logo">
+          <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v8"></path>
+            <path d="M4.93 10.93a10 10 0 1 0 14.14 0"></path>
+            <path d="M2 18h20"></path>
+            <path d="M12 14c-2 0-3 1-3 3h6c0-2-1-3-3-3z"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title">FieldForesight <span class="badge-ai">AI 2.0</span></div>
+          <div class="brand-subtitle">Smart Agricultural Risk Assessment & Decision Support Platform</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Live WebSocket Status Badge -->
+        <div id="ws-status-badge" class="status-pill status-connecting" title="WebSocket Live Scenario Stream">
+          <span class="pulse-dot"></span>
+          <span id="ws-status-text" class="status-label">Connecting...</span>
+        </div>
+
+        <!-- Quick Developer/Admin links -->
+        <a href="/docs" target="_blank" class="nav-btn" title="FastAPI Interactive Swagger Docs">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Swagger API</span>
+        </a>
+
+        <a href="/admin" target="_blank" class="nav-btn" title="SQLAdmin Database Panel">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          <span>Admin Panel</span>
+        </a>
+
+        <button id="theme-toggle-btn" class="icon-circle-btn" title="Toggle Theme">
+          <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Grid -->
+    <main class="main-layout">
+      
+      <!-- LEFT SIDEBAR: Crop Variety Selector & Profile -->
+      <aside class="sidebar-panel glass-card">
+        <div class="panel-header">
+          <div class="panel-title-wrap">
+            <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <h2>Crop Variety Selection</h2>
+          </div>
+          <button id="add-variety-modal-btn" class="mini-action-btn" title="Add New Variety">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>New Variety</span>
+          </button>
+        </div>
+
+        <!-- Variety Dropdown Selector -->
+        <div class="form-group">
+          <label for="variety-select">Monitored Crop / Variety</label>
+          <div class="custom-select-wrapper">
+            <select id="variety-select" class="form-select">
+              <option value="">Loading varieties...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Dynamic Variety Profile Card -->
+        <div id="variety-profile-card" class="variety-profile">
+          <div class="variety-header">
+            <div>
+              <h3 id="vp-bangla-name" class="vp-title">BRRI Dhan 28</h3>
+              <div id="vp-eng-name" class="vp-subtitle">High Yielding Boro Rice</div>
+            </div>
+            <span id="vp-crop-badge" class="crop-badge">Boro Rice</span>
+          </div>
+
+          <p id="vp-description" class="vp-desc">
+            Bangladesh's most popular high-yielding Boro rice variety. Moderately susceptible to neck blast disease.
+          </p>
+
+          <div class="spec-grid">
+            <div class="spec-item">
+              <span class="spec-label">Optimal Temperature</span>
+              <span id="vp-optimal-temp" class="spec-value highlight-green">20 - 30°C</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Max Tolerable Temp</span>
+              <span id="vp-max-temp" class="spec-value highlight-red">35°C</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Rainfall Range</span>
+              <span id="vp-rainfall" class="spec-value">120 - 250 mm</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Growth Duration</span>
+              <span id="vp-duration" class="spec-value">140 Days</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Yield Potential</span>
+              <span id="vp-yield" class="spec-value highlight-emerald">6.0 ton/ha</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Pest Susceptibility</span>
+              <span id="vp-pest-susceptibility" class="spec-value highlight-amber">High</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scenario Quick Presets -->
+        <div class="presets-section">
+          <label class="section-label">Weather Presets (Quick Scenarios)</label>
+          <div class="preset-chips">
+            <button class="preset-chip active" data-scenario="normal">🌿 Normal Weather</button>
+            <button class="preset-chip" data-scenario="heatwave">🔥 Severe Heatwave</button>
+            <button class="preset-chip" data-scenario="flood">🌊 Heavy Rain & Flood</button>
+            <button class="preset-chip" data-scenario="cyclone">💨 Cyclone & Storm</button>
+            <button class="preset-chip" data-scenario="pest">🐛 Pest Surge</button>
+            <button class="preset-chip" data-scenario="drought">☀️ Severe Drought</button>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- CENTER & RIGHT: Simulation Controls, Real-time Risk, AI Advisory & Forecast -->
+      <section class="content-area">
+        
+        <!-- TOP SECTION: Controls & Live Risk Gauges -->
+        <div class="simulation-grid">
+          
+          <!-- Weather Parameter Sliders -->
+          <div class="sliders-card glass-card">
+            <div class="card-header">
+              <div class="header-title">
+                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg>
+                <h3>Weather & Field Conditions Simulation</h3>
+              </div>
+              <div class="realtime-toggle-wrap">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="realtime-ws-toggle" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">Realtime Streaming</span>
+              </div>
+            </div>
+
+            <div class="parameter-sliders">
+              
+              <!-- Temperature -->
+              <div class="slider-group">
+                <div class="slider-info">
+                  <div class="param-title">
+                    <span class="param-icon">🌡️</span>
+                    <span class="param-name">Temperature</span>
+                  </div>
+                  <div class="param-val-badge">
+                    <input type="number" id="temp-num" value="28.5" min="0" max="50" step="0.5" class="num-input">
+                    <span class="unit">°C</span>
+                  </div>
+                </div>
+                <input type="range" id="temp-slider" min="5" max="48" step="0.5" value="28.5" class="range-slider">
+                <div class="slider-scale">
+                  <span>5°C</span>
+                  <span class="scale-mid">Optimal: 20-32°C</span>
+                  <span>48°C</span>
+                </div>
+              </div>
+
+              <!-- Relative Humidity -->
+              <div class="slider-group">
+                <div class="slider-info">
+                  <div class="param-title">
+                    <span class="param-icon">💧</span>
+                    <span class="param-name">Relative Humidity</span>
+                  </div>
+                  <div class="param-val-badge">
+                    <input type="number" id="humidity-num" value="72" min="10" max="100" step="1" class="num-input">
+                    <span class="unit">%</span>
+                  </div>
+                </div>
+                <input type="range" id="humidity-slider" min="10" max="100" step="1" value="72" class="range-slider">
+                <div class="slider-scale">
+                  <span>10%</span>
+                  <span class="scale-mid">Favorable: 50-75%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              <!-- Rainfall -->
+              <div class="slider-group">
+                <div class="slider-info">
+                  <div class="param-title">
+                    <span class="param-icon">🌧️</span>
+                    <span class="param-name">Rainfall</span>
+                  </div>
+                  <div class="param-val-badge">
+                    <input type="number" id="rainfall-num" value="160" min="0" max="500" step="5" class="num-input">
+                    <span class="unit">mm</span>
+                  </div>
+                </div>
+                <input type="range" id="rainfall-slider" min="0" max="450" step="5" value="160" class="range-slider">
+                <div class="slider-scale">
+                  <span>0 mm</span>
+                  <span class="scale-mid">Required: 100-250 mm</span>
+                  <span>450 mm</span>
+                </div>
+              </div>
+
+              <!-- Wind Speed -->
+              <div class="slider-group">
+                <div class="slider-info">
+                  <div class="param-title">
+                    <span class="param-icon">💨</span>
+                    <span class="param-name">Wind Speed</span>
+                  </div>
+                  <div class="param-val-badge">
+                    <input type="number" id="wind-num" value="12" min="0" max="120" step="1" class="num-input">
+                    <span class="unit">km/h</span>
+                  </div>
+                </div>
+                <input type="range" id="wind-slider" min="0" max="100" step="1" value="12" class="range-slider">
+                <div class="slider-scale">
+                  <span>0 km/h</span>
+                  <span class="scale-mid">Calm: 5-20 km/h</span>
+                  <span>100 km/h</span>
+                </div>
+              </div>
+
+              <!-- Pest Density -->
+              <div class="slider-group">
+                <div class="slider-info">
+                  <div class="param-title">
+                    <span class="param-icon">🐛</span>
+                    <span class="param-name">Pest Density</span>
+                  </div>
+                  <div class="param-val-badge">
+                    <input type="number" id="pest-num" value="8" min="0" max="100" step="1" class="num-input">
+                    <span class="unit">pests/m²</span>
+                  </div>
+                </div>
+                <input type="range" id="pest-slider" min="0" max="80" step="1" value="8" class="range-slider">
+                <div class="slider-scale">
+                  <span>0</span>
+                  <span class="scale-mid">Safe Threshold: &lt; 10</span>
+                  <span>80</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Risk Assessment Gauge & Score Breakdown -->
+          <div class="risk-gauge-card glass-card">
+            <div class="card-header">
+              <div class="header-title">
+                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <h3>Risk Meter & Factor Analysis</h3>
+              </div>
+              <span id="risk-badge" class="risk-pill pill-low">LOW RISK</span>
+            </div>
+
+            <!-- Radial Gauge Meter -->
+            <div class="gauge-container">
+              <svg class="radial-gauge" viewBox="0 0 200 120">
+                <!-- Gauge Background Arc -->
+                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="18" stroke-linecap="round"/>
+                <!-- Colored segments indicator glow -->
+                <path id="gauge-progress-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#riskGradient)" stroke-width="18" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="180"/>
+                
+                <!-- Linear Gradient for Risk Gauge -->
+                <defs>
+                  <linearGradient id="riskGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#10b981" />
+                    <stop offset="35%" stop-color="#f59e0b" />
+                    <stop offset="70%" stop-color="#f97316" />
+                    <stop offset="100%" stop-color="#ef4444" />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+              <!-- Center Score Display -->
+              <div class="gauge-center-content">
+                <div id="risk-score-value" class="risk-number">18.5</div>
+                <div class="risk-max-label">/ 100 Risk Index</div>
+                <div id="risk-level-bn" class="risk-text-bn">No Risk (Favorable)</div>
+              </div>
+            </div>
+
+            <!-- Metric Breakdown Progress Bars -->
+            <div class="metrics-breakdown">
+              <div class="metric-row">
+                <div class="metric-meta">
+                  <span>Temperature Risk</span>
+                  <span id="score-temp" class="metric-num">12.5%</span>
+                </div>
+                <div class="prog-track"><div id="bar-temp" class="prog-fill fill-low" style="width: 12.5%;"></div></div>
+              </div>
+
+              <div class="metric-row">
+                <div class="metric-meta">
+                  <span>Rainfall Risk</span>
+                  <span id="score-rain" class="metric-num">15.0%</span>
+                </div>
+                <div class="prog-track"><div id="bar-rain" class="prog-fill fill-low" style="width: 15%;"></div></div>
+              </div>
+
+              <div class="metric-row">
+                <div class="metric-meta">
+                  <span>Humidity Risk</span>
+                  <span id="score-hum" class="metric-num">15.0%</span>
+                </div>
+                <div class="prog-track"><div id="bar-hum" class="prog-fill fill-low" style="width: 15%;"></div></div>
+              </div>
+
+              <div class="metric-row">
+                <div class="metric-meta">
+                  <span>Pest Risk</span>
+                  <span id="score-pest" class="metric-num">20.0%</span>
+                </div>
+                <div class="prog-track"><div id="bar-pest" class="prog-fill fill-low" style="width: 20%;"></div></div>
+              </div>
+
+              <div class="metric-row">
+                <div class="metric-meta">
+                  <span>Wind Risk</span>
+                  <span id="score-wind" class="metric-num">15.0%</span>
+                </div>
+                <div class="prog-track"><div id="bar-wind" class="prog-fill fill-low" style="width: 15%;"></div></div>
+              </div>
+            </div>
+
+            <!-- Triggered Warnings Section -->
+            <div class="warnings-box">
+              <div class="warning-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span>Detected Warning Alerts</span>
+              </div>
+              <ul id="warnings-list" class="warnings-items">
+                <li class="warning-safe">✓ Weather conditions are normal and favorable.</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- LOWER SECTION: Tabs for AI Advisory, Forecasting & History -->
+        <div class="tabs-container glass-card">
+          <div class="tabs-nav">
+            <button class="tab-btn active" data-tab="advisory-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <span>AI Agronomic Advisory</span>
+            </button>
+            <button class="tab-btn" data-tab="forecast-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              <span>Yield & Stress Forecast (ML)</span>
+            </button>
+            <button class="tab-btn" data-tab="history-tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Advisory History & Logs</span>
+            </button>
+          </div>
+
+          <!-- TAB 1: AI Advisory Generator -->
+          <div id="advisory-tab" class="tab-content active">
+            <div class="advisory-toolbar">
+              <div class="toolbar-info">
+                <h4>Simulation-Based Agronomic Advisory</h4>
+                <p>Powered by Groq LLaMA-3.3 70B & Agronomic Rules Engine</p>
+              </div>
+              <div class="toolbar-buttons">
+                <button id="generate-advisory-btn" class="primary-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+                  <span id="gen-btn-text">Generate Advisory</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Advisory Result Card -->
+            <div id="advisory-display-area" class="advisory-result-card">
+              <div class="advisory-card-header">
+                <div class="adv-variety-badge">
+                  <span class="crop-icon">🌾</span>
+                  <span id="adv-variety-title">BRRI Dhan 28</span>
+                </div>
+                <div class="adv-meta">
+                  <span id="adv-engine-badge" class="engine-badge">Rule Engine Fallback</span>
+                  <span id="adv-time" class="time-badge">Just now</span>
+                </div>
+              </div>
+
+              <!-- Main Advisory Text -->
+              <div class="advisory-body">
+                <div class="section-badge">Comprehensive Agronomic Advisory</div>
+                <p id="adv-main-text" class="advisory-lead-text">
+                  OPTIMAL CONDITION ADVISORY (BRRI Dhan 28): Overall weather conditions are favorable and supportive of crop development. Maintain balanced fertilization and regular field inspections.
+                </p>
+              </div>
+
+              <!-- Action Items Grid -->
+              <div class="action-grid">
+                
+                <!-- Action Checklist -->
+                <div class="action-block">
+                  <div class="action-header">
+                    <span class="action-icon">📋</span>
+                    <h5>Urgent Action Plan</h5>
+                  </div>
+                  <ul id="adv-action-items" class="action-list">
+                    <li>Monitor soil moisture levels regularly.</li>
+                    <li>Conduct regular field scouting in early morning and late afternoon.</li>
+                  </ul>
+                </div>
+
+                <!-- Irrigation Advice -->
+                <div class="action-block">
+                  <div class="action-header">
+                    <span class="action-icon">💧</span>
+                    <h5>Irrigation & Water Management</h5>
+                  </div>
+                  <p id="adv-irrigation" class="action-text">
+                    Maintain normal soil moisture levels. Additional supplemental irrigation is not required.
+                  </p>
+                </div>
+
+                <!-- Pest Advice -->
+                <div class="action-block">
+                  <div class="action-header">
+                    <span class="action-icon">🛡️</span>
+                    <h5>Pest & Disease Control</h5>
+                  </div>
+                  <p id="adv-pest" class="action-text">
+                    Pest risk is currently within manageable thresholds. Set up 5 light traps per hectare for active surveillance.
+                  </p>
+                </div>
+
+              </div>
+
+              <!-- Action Bar for Copy / Export -->
+              <div class="advisory-actions-bar">
+                <button id="copy-advisory-btn" class="secondary-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>Copy Advisory</span>
+                </button>
+                <button id="print-advisory-btn" class="secondary-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                  <span>Print / Save Report</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- TAB 2: ML Yield & Weather Forecaster -->
+          <div id="forecast-tab" class="tab-content">
+            <div class="forecast-toolbar">
+              <div class="forecast-selectors">
+                <div class="select-inline">
+                  <label for="forecast-days">Forecast Horizon:</label>
+                  <select id="forecast-days" class="mini-select">
+                    <option value="15">15 Days (Short-term)</option>
+                    <option value="30" selected>30 Days (1 Month)</option>
+                    <option value="60">60 Days (2 Months)</option>
+                    <option value="90">90 Days (Full Season)</option>
+                  </select>
+                </div>
+
+                <div class="select-inline">
+                  <label for="forecast-metric">Metric Type:</label>
+                  <select id="forecast-metric" class="mini-select">
+                    <option value="yield_index" selected>Yield Index Forecast (ton/ha)</option>
+                    <option value="stress_index">Weather Stress Trend</option>
+                  </select>
+                </div>
+              </div>
+
+              <button id="refresh-forecast-btn" class="secondary-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                <span>Refresh Forecast</span>
+              </button>
+            </div>
+
+            <!-- Forecast Stat Badges -->
+            <div class="forecast-metrics-summary">
+              <div class="f-metric-card">
+                <span class="f-label">Expected Mean Yield</span>
+                <span id="f-mean-val" class="f-val highlight-emerald">6.20 ton/ha</span>
+              </div>
+              <div class="f-metric-card">
+                <span class="f-label">Lower Confidence Bound</span>
+                <span id="f-min-val" class="f-val highlight-amber">5.75 ton/ha</span>
+              </div>
+              <div class="f-metric-card">
+                <span class="f-label">Upper Potential Bound</span>
+                <span id="f-max-val" class="f-val highlight-green">6.65 ton/ha</span>
+              </div>
+              <div class="f-metric-card">
+                <span class="f-label">Model Algorithm</span>
+                <span class="f-val highlight-blue">Facebook Prophet ML</span>
+              </div>
+            </div>
+
+            <!-- Forecast Chart Canvas -->
+            <div class="chart-wrapper">
+              <canvas id="forecastChart"></canvas>
+            </div>
+          </div>
+
+          <!-- TAB 3: Historical Advisories -->
+          <div id="history-tab" class="tab-content">
+            <div class="history-header">
+              <h4>Historical Advisory Logs</h4>
+              <button id="refresh-history-btn" class="mini-action-btn">Refresh List</button>
+            </div>
+
+            <div id="history-list-container" class="history-list">
+              <div class="history-loading">Loading advisory logs...</div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <span>🌾 <strong>FieldForesight</strong> — Smart Agricultural Risk Forecaster & AI Advisory Platform</span>
+        <span class="footer-links">
+          <a href="/docs" target="_blank">API Documentation</a> • 
+          <a href="/redoc" target="_blank">ReDoc</a> • 
+          <a href="/admin" target="_blank">SQLAdmin</a>
+        </span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ADD VARIETY MODAL -->
+  <div id="add-variety-modal" class="modal-overlay hidden">
+    <div class="modal-card glass-card">
+      <div class="modal-header">
+        <h3>Add New Crop Variety</h3>
+        <button id="close-modal-btn" class="modal-close-btn">&times;</button>
+      </div>
+
+      <form id="add-variety-form" class="modal-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="new-var-name">Variety Name (English) *</label>
+            <input type="text" id="new-var-name" class="form-input" placeholder="e.g. BRRI Dhan 100" required>
+          </div>
+          <div class="form-group">
+            <label for="new-var-name-bn">Local Name / Alias *</label>
+            <input type="text" id="new-var-name-bn" class="form-input" placeholder="e.g. BRRI Dhan 100" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="new-var-crop">Crop Type *</label>
+            <input type="text" id="new-var-crop" class="form-input" placeholder="e.g. Boro Rice / Wheat / Maize" required>
+          </div>
+          <div class="form-group">
+            <label for="new-var-pest">Pest Susceptibility *</label>
+            <select id="new-var-pest" class="form-select">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="new-var-temp-min">Optimal Min Temp (°C)</label>
+            <input type="number" id="new-var-temp-min" class="form-input" value="20.0" step="0.5">
+          </div>
+          <div class="form-group">
+            <label for="new-var-temp-max">Optimal Max Temp (°C)</label>
+            <input type="number" id="new-var-temp-max" class="form-input" value="32.0" step="0.5">
+          </div>
+          <div class="form-group">
+            <label for="new-var-temp-threshold">Max Temperature Threshold (°C)</label>
+            <input type="number" id="new-var-temp-threshold" class="form-input" value="36.0" step="0.5">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="new-var-rain-min">Min Required Rainfall (mm)</label>
+            <input type="number" id="new-var-rain-min" class="form-input" value="120.0" step="5">
+          </div>
+          <div class="form-group">
+            <label for="new-var-rain-max">Max Tolerable Rainfall (mm)</label>
+            <input type="number" id="new-var-rain-max" class="form-input" value="260.0" step="5">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="new-var-duration">Growth Duration (Days)</label>
+            <input type="number" id="new-var-duration" class="form-input" value="145">
+          </div>
+          <div class="form-group">
+            <label for="new-var-yield">Potential Yield (ton/ha)</label>
+            <input type="number" id="new-var-yield" class="form-input" value="7.0" step="0.1">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="new-var-desc-bn">Agronomic Description / Notes</label>
+          <textarea id="new-var-desc-bn" class="form-textarea" rows="2" placeholder="Special characteristics, nutritional benefits, disease resistance..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="cancel-modal-btn" class="secondary-btn">Cancel</button>
+          <button type="submit" id="save-variety-btn" class="primary-btn">Save Variety</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- JavaScript -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

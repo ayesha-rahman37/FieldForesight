@@ -31,51 +31,50 @@ def generate_fallback_bangla_advisory(variety: Variety, eval_result: RiskEvaluat
 
     if scenario.rainfall < variety.rainfall_min_mm:
         irrigation_advice = (
-            f"ক্ষেতে পর্যাপ্ত রসের অভাব রয়েছে (বৃষ্টিপাত {scenario.rainfall} মিমি)। "
-            f"{variety.name_bangla} জাতের জন্য ৩-৫ সেমি হালকা সেচ অবিলম্বে নিশ্চিত করুন। "
-            "বিকালে সেচ দেওয়া সবচেয়ে কার্যকরী।"
+            f"Soil moisture is deficient (Rainfall: {scenario.rainfall} mm). "
+            f"Apply 3-5 cm light irrigation promptly for {variety.name}. "
+            "Late afternoon irrigation is highly recommended to minimize evaporation loss."
         )
-        action_items.append("ক্ষেতে জরুরি হালকা সেচের ব্যবস্থা করুন।")
+        action_items.append("Schedule immediate light irrigation during late afternoon.")
     elif scenario.rainfall > variety.rainfall_max_mm:
         irrigation_advice = (
-            f"অতিরিক্ত বৃষ্টিপাতের কারণে (বৃষ্টিপাত {scenario.rainfall} মিমি) জলবদ্ধতা তৈরি হতে পারে। "
-            "ক্ষেত থেকে বাড়তি পানি দ্রুত নিষ্কাশনের জন্য নালার ব্যবস্থা বজায় রাখুন।"
+            f"Excessive rainfall detected (Rainfall: {scenario.rainfall} mm), presenting high risk of waterlogging. "
+            "Ensure field drainage channels and trenches are fully cleared for rapid water evacuation."
         )
-        action_items.append("ক্ষেতের অতিরিক্ত পানি নিষ্কাশনের ব্যবস্থা রাখুন।")
+        action_items.append("Clear drainage canals to prevent waterlogging around roots.")
     else:
-        irrigation_advice = "মাটিতে স্বাভাবিক সেচ পরিস্থিতি বজায় রাখুন। অতিরিক্ত সেচ দেওয়ার প্রয়োজন নেই।"
-        action_items.append("মাটিতে প্রয়োজনীয় আদ্রতা নিয়মিত পর্যবেক্ষণ করুন।")
+        irrigation_advice = "Maintain normal soil moisture levels. Additional supplemental irrigation is not required."
+        action_items.append("Monitor soil moisture levels regularly.")
 
     if eval_result.metric_levels.get("pest_density") in ["HIGH", "CRITICAL"] or scenario.humidity > 80:
         pest_advice = (
-            f"উচ্চ আর্দ্রতা ({scenario.humidity}%) ও পোকার ঘনত্বের কারণে ব্লাস্ট রোগ ও বাদামী গাছফড়িং (কারেন্ট পোকা) "
-            "আক্রমণের সম্ভাবনা রয়েছে। প্রতি লিটার পানিতে ট্রাইসাইক্লাজল/আইসোপ্রোথিওলেন বা সঠিক বালাইনাশক নিয়ম অনুযায়ী স্প্রে করুন।"
+            f"Elevated humidity ({scenario.humidity}%) and pest density indicate increased vulnerability to fungal blast and brown planthopper (BPH). "
+            "Apply recommended agronomic fungicides/insecticides (e.g. Tricyclazole/Isoprothiolane) according to safety standards."
         )
-        action_items.append("অনুমোদিত বালাইনাশক দিয়ে স্প্রে করুন ও আলো ফাঁদ ব্যবহার করুন।")
+        action_items.append("Spray approved agrochemicals and install light traps across the plot.")
     else:
-        pest_advice = "বর্তমানে বালাই ঝুঁকি সহনশীল মাত্রায় আছে। নিয়মিত শতকরা ৫টি আলো ফাঁদ বসিয়ে পর্যবেক্ষণ করুন।"
-        action_items.append("সকালে ও বিকালে মাঠ ঘুরে শস্যের পাতা পর্যবেক্ষণ করুন।")
+        pest_advice = "Pest risk is currently within manageable thresholds. Set up 5 light traps per hectare for active surveillance."
+        action_items.append("Conduct regular field scouting in early morning and late afternoon.")
 
     if risk_level == "CRITICAL":
         advisory_text = (
-            f"জরুরী কৃষি পূর্বাভাস ({variety.name_bangla}): আবহাওয়া পরিস্থিতি অত্যন্ত ঝুঁকিপূর্ণ! "
-            f"তাপমাত্রা {scenario.temperature}°C ও বৃষ্টিপাত {scenario.rainfall} মিমি। "
-            "ফসল রক্ষায় অবিলম্বে নিচের পদক্ষেপসমূহ গ্রহণ করুন।"
+            f"CRITICAL ADVISORY ({variety.name}): Weather conditions are severely unfavorable! "
+            f"Temperature is {scenario.temperature}°C and rainfall is {scenario.rainfall} mm. "
+            "Take urgent agronomic measures immediately to mitigate crop damage."
         )
     elif risk_level == "HIGH":
         advisory_text = (
-            f"সতর্কতা পরামর্শ ({variety.name_bangla}): আবহাওয়ার প্রতিকূলতার কারণে ফসলে উচ্চ ঝুঁকির সম্ভাবনা রয়েছে। "
-            "বিশেষ করে সেচ ও বালাই ব্যবস্থাপনায় নজর দেওয়া জরুরি।"
+            f"HIGH RISK ALERT ({variety.name}): Unfavorable weather trends indicate elevated stress on crops. "
+            "Prioritize soil drainage/irrigation and disease management."
         )
     elif risk_level == "MEDIUM":
         advisory_text = (
-            f"সাধারণ পর্যবেক্ষণ পরামর্শ ({variety.name_bangla}): ফসল সার্বিকভাবে ভালো হলেও আর্দ্রতা ও তাপমাত্রার সামান্য তারতম্য রয়েছে। "
-            "নিয়মিত যত্ন নিন।"
+            f"MODERATE RISK ADVISORY ({variety.name}): Crop growth is stable, though slight temperature and humidity variations require active field monitoring."
         )
     else:
         advisory_text = (
-            f"অনুকূল আবহাওয়া পরামর্শ ({variety.name_bangla}): আবহাওয়ার সার্বিক পরিস্থিতি অনুকূল। "
-            "সঠিক সময়মতো সুষম সার ও হালকা পর্যবেক্ষণ বজায় রাখুন।"
+            f"OPTIMAL CONDITION ADVISORY ({variety.name}): Overall weather conditions are favorable and supportive of crop development. "
+            "Maintain balanced fertilization and regular field inspections."
         )
 
     return {
@@ -93,8 +92,8 @@ def generate_bangla_advisory(variety: Variety, eval_result: RiskEvaluationResult
         return generate_fallback_bangla_advisory(variety, eval_result)
 
     system_prompt = (
-        "You are FieldForesight AI, an expert agricultural scientist and agronomist in Bangladesh. "
-        "Your task is to generate actionable, empathetic, accurate agricultural advisory in proper natural Bangla (বাংলা). "
+        "You are FieldForesight AI, an expert agricultural scientist and agronomist. "
+        "Your task is to generate actionable, empathetic, scientifically rigorous agricultural advisory in clear, professional English. "
         "Return ONLY a valid JSON object matching this structure:\n"
         "{\n"
         '  "advisory_text_bn": "...",\n'
@@ -105,21 +104,21 @@ def generate_bangla_advisory(variety: Variety, eval_result: RiskEvaluationResult
     )
 
     user_prompt = f"""
-ফসল/জাত: {variety.name_bangla} ({variety.name})
-জাতের বৈশিষ্ট্য: আদর্শ তাপমাত্রা {variety.optimal_temp_min}°C - {variety.optimal_temp_max}°C, বৃষ্টিপাত {variety.rainfall_min_mm}-{variety.rainfall_max_mm} মিমি, বালাই সংবেদনশীলতা: {variety.pest_susceptibility}।
+Crop / Variety: {variety.name} ({variety.crop_type})
+Variety Traits: Optimal Temp {variety.optimal_temp_min}°C - {variety.optimal_temp_max}°C, Rainfall {variety.rainfall_min_mm}-{variety.rainfall_max_mm} mm, Pest Susceptibility: {variety.pest_susceptibility}.
 
-বর্তমান পূর্বাভাস পরিস্থিতি:
-- সামগ্রিক ঝুঁকি স্তর: {eval_result.risk_level} (স্কোর: {eval_result.overall_risk_score}/100)
-- তাপমাত্রা: {eval_result.scenario.temperature}°C (ঝুঁকি: {eval_result.metric_levels['temperature']})
-- বৃষ্টিপাত: {eval_result.scenario.rainfall} মিমি (ঝুঁকি: {eval_result.metric_levels['rainfall']})
-- আর্দ্রতা: {eval_result.scenario.humidity}% (ঝুঁকি: {eval_result.metric_levels['humidity']})
-- বাতাসের গতি: {eval_result.scenario.wind_speed} কিমি/ঘণ্টা
-- পোকার ঘনত্ব: {eval_result.scenario.pest_density} পোকা/মি²
+Current Simulation Scenario:
+- Overall Risk Level: {eval_result.risk_level} (Score: {eval_result.overall_risk_score}/100)
+- Temperature: {eval_result.scenario.temperature}°C (Risk: {eval_result.metric_levels['temperature']})
+- Rainfall: {eval_result.scenario.rainfall} mm (Risk: {eval_result.metric_levels['rainfall']})
+- Humidity: {eval_result.scenario.humidity}% (Risk: {eval_result.metric_levels['humidity']})
+- Wind Speed: {eval_result.scenario.wind_speed} km/h
+- Pest Density: {eval_result.scenario.pest_density} pests/m²
 
-সনাক্তকৃত সংকেতসমূহ:
+Detected Warnings:
 {json.dumps(eval_result.triggered_warnings, ensure_ascii=False)}
 
-কৃষকদের জন্য স্পষ্ট, বাস্তবসম্মত বাংলা কৃষি পরামর্শ ও ৩টি সুনির্দিষ্ট পদক্ষেপ তৈরি করুন।
+Generate a clear, authoritative English agronomic advisory with 2-3 specific action items, irrigation instructions, and pest management guidance.
 """
 
     try:

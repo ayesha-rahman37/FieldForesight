@@ -20,7 +20,7 @@ def generate_advisory_endpoint(request: AdvisoryRequest, db: Session = Depends(g
     eval_result = evaluate_risk(v, request.scenario)
     advisory_content = generate_bangla_advisory(v, eval_result)
 
-    advisory_text = advisory_content.get("advisory_text_bn", "পরামর্শ পাওয়া যায়নি।")
+    advisory_text = advisory_content.get("advisory_text_bn", "No advisory available.")
     action_items = advisory_content.get("action_items_bn", [])
     provider = advisory_content.get("llm_provider", "Rule Engine Fallback")
 
@@ -69,7 +69,7 @@ def get_advisory_history(variety_id: Optional[int] = None, limit: int = 10, db: 
                 id=r.id,
                 variety_id=r.variety_id,
                 variety_name=v.name if v else "Unknown",
-                variety_name_bangla=v.name_bangla if v else "অজানা জাত",
+                variety_name_bangla=v.name_bangla if v else "Unknown Variety",
                 risk_level=r.risk_level,
                 advisory_text_bn=r.advisory_text_bn,
                 action_items_bn=r.action_items_json or [],
