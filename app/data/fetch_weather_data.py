@@ -71,3 +71,4 @@ if __name__ == "__main__":
     yearly_df.to_csv(yearly_path, index=False)
     print("Yearly aggregated data saved to:", yearly_path)
     print(yearly_df)
+
