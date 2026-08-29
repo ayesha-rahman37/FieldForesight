@@ -1,6 +1,6 @@
 """
-Trains the Prophet model using real historical yield data merged with
-weather data, and applies recent-anomaly weighting so that recent years
+Trains the Prophet model using real historical yield satellite_output merged with
+weather satellite_output, and applies recent-anomaly weighting so that recent years
 have more influence on the prediction than older years.
 """
 
@@ -9,7 +9,7 @@ from prophet import Prophet
 import joblib
 import os
 
-DATA_DIR = os.path.join("app", "data")
+DATA_DIR = os.path.join("app", "satellite_output")
 YIELD_FILE = os.path.join(DATA_DIR, "historical_yield.csv")
 MODEL_OUTPUT = os.path.join(DATA_DIR, "trained_model.pkl")
 
@@ -63,8 +63,8 @@ def train_and_save_model(filepath: str, output_path: str):
 
 if __name__ == "__main__":
     if not os.path.exists(YIELD_FILE):
-        print("Yield data file not found at:", YIELD_FILE)
-        print("Copy historical_yield_template.csv into app/data/ and rename it to historical_yield.csv")
-        print("Fill it with real data, then run this script again.")
+        print("Yield satellite_output file not found at:", YIELD_FILE)
+        print("Copy historical_yield_template.csv into app/satellite_output/ and rename it to historical_yield.csv")
+        print("Fill it with real satellite_output, then run this script again.")
     else:
         train_and_save_model(YIELD_FILE, MODEL_OUTPUT)
