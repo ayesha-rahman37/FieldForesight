@@ -1,5 +1,5 @@
 """
-Fetches historical rainfall and temperature satellite_output from NASA POWER API
+Fetches historical rainfall and temperature data from NASA POWER API
 for a given region (latitude/longitude) in Bangladesh.
 No API key required - this is a free public API.
 """
@@ -9,7 +9,7 @@ import pandas as pd
 import os
 
 # Example coordinates - Rangpur, Bangladesh
-# Replace with the region you want to collect satellite_output for
+# Replace with the region you want to collect data for
 LATITUDE = 25.7439
 LONGITUDE = 89.2752
 
@@ -56,19 +56,19 @@ def aggregate_to_yearly(df: pd.DataFrame):
 
 
 if __name__ == "__main__":
-    print("Fetching weather satellite_output from NASA POWER API...")
+    print("Fetching weather data from NASA POWER API...")
     daily_df = fetch_weather_data(LATITUDE, LONGITUDE, START_YEAR, END_YEAR)
 
-    output_dir = os.path.join("app", "satellite_output")
+    output_dir = os.path.join("app", "data")
     os.makedirs(output_dir, exist_ok=True)
 
     daily_path = os.path.join(output_dir, "weather_daily.csv")
     daily_df.to_csv(daily_path, index=False)
-    print("Daily weather satellite_output saved to:", daily_path)
+    print("Daily weather data saved to:", daily_path)
 
     yearly_df = aggregate_to_yearly(daily_df)
     yearly_path = os.path.join(output_dir, "weather_yearly.csv")
     yearly_df.to_csv(yearly_path, index=False)
-    print("Yearly aggregated satellite_output saved to:", yearly_path)
+    print("Yearly aggregated data saved to:", yearly_path)
     print(yearly_df)
 

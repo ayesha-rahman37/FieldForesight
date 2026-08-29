@@ -14,7 +14,7 @@ app = FastAPI(title="FieldForesight API", version="1.0")
 
 
 app.include_router(community_router, prefix="/api/community", tags=["Community"])
-app.include_router(data_ownership_router, prefix="/api/satellite_output-ownership", tags=["Data Ownership"])
+app.include_router(data_ownership_router, prefix="/api/data-ownership", tags=["Data Ownership"])
 app.include_router(explainability_router, prefix="/api/explain", tags=["Explainability"])
 app.include_router(scenario_planner_router, prefix="/api/scenario", tags=["Scenario Planner"])
 app.include_router(personalization_router, prefix="/api/personalization", tags=["Personalization"])
