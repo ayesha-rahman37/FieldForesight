@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YieldMax | FieldForesight</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<div class="app-shell">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">🌾</div>
+            <div>
+                <h3>YieldMax</h3>
+                <span>FieldForesight</span>
+            </div>
+        </div>
+
+        <nav>
+            <a class="active" href="#">
+                <span>⌂</span> Dashboard
+            </a>
+            <a href="#prediction">
+                <span>📊</span> Prediction
+            </a>
+            <a href="#history">
+                <span>🕘</span> History
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="system-status">
+                <span class="status-dot"></span>
+                API Connected
+            </div>
+        </div>
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">AI-POWERED AGRICULTURE</p>
+                <h1>Crop Yield Prediction</h1>
+                <p class="subtitle">
+                    Predict your crop yield using historical agricultural data.
+                </p>
+            </div>
+
+            <div class="top-status">
+                <span class="status-dot"></span>
+                System Online
+            </div>
+        </header>
+
+
+        <section id="prediction" class="prediction-layout">
+
+            <div class="card prediction-form-card">
+
+                <div class="card-heading">
+                    <div>
+                        <p class="section-label">PREDICTION</p>
+                        <h2>Generate Forecast</h2>
+                    </div>
+                    <div class="heading-icon">🌱</div>
+                </div>
+
+                <form id="predictionForm">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label for="crop">Crop</label>
+                            <select id="crop" required>
+                                <option value="">Select crop</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="region">Region</label>
+                            <select id="region" required>
+                                <option value="">Select region</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="variety">Variety</label>
+                            <select id="variety">
+                                <option value="HYV">HYV</option>
+                                <option value="Local">Local</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="croppingType">Cropping Type</label>
+                            <select id="croppingType">
+                                <option value="single">Single Crop</option>
+                                <option value="intercrop">Intercrop</option>
+                                <option value="rotation">Crop Rotation</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <button type="submit" id="predictBtn" class="predict-btn">
+                        Generate Prediction
+                    </button>
+
+                </form>
+
+                <div id="errorBox" class="error-box d-none"></div>
+
+            </div>
+
+
+            <div class="card result-card">
+
+                <div class="card-heading">
+                    <div>
+                        <p class="section-label">FORECAST RESULT</p>
+                        <h2>Prediction</h2>
+                    </div>
+                    <div class="heading-icon">📈</div>
+                </div>
+
+                <div id="emptyResult" class="empty-result">
+                    <div class="empty-icon">🌾</div>
+                    <p>Select your crop information and generate a forecast.</p>
+                </div>
+
+                <div id="resultContent" class="d-none">
+
+                    <div class="yield-box">
+                        <span>Predicted Yield</span>
+                        <strong id="predictedYield">0.00</strong>
+                        <small>tons / hectare</small>
+                    </div>
+
+                    <div class="confidence-box">
+                        <div>
+                            <span>Lower Bound</span>
+                            <strong id="lowerBound">0.00</strong>
+                        </div>
+
+                        <div class="confidence-line"></div>
+
+                        <div>
+                            <span>Upper Bound</span>
+                            <strong id="upperBound">0.00</strong>
+                        </div>
+                    </div>
+
+                    <div class="forecast-message" id="forecastMessage"></div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <section id="history" class="card info-card">
+
+            <div class="card-heading">
+                <div>
+                    <p class="section-label">MODEL INFORMATION</p>
+                    <h2>FieldForesight</h2>
+                </div>
+            </div>
+
+            <div class="info-grid">
+
+                <div class="info-item">
+                    <span>Model</span>
+                    <strong>Prophet</strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Recent Anomaly Weighting</span>
+                    <strong>Enabled</strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Variety Adjustment</span>
+                    <strong>Enabled</strong>
+                </div>
+
+                <div class="info-item">
+                    <span>Confidence Interval</span>
+                    <strong>Enabled</strong>
+                </div>
+
+            </div>
+
+        </section>
+
+        <footer>
+            YieldMax · FieldForesight &copy; 2026
+        </footer>
+
+    </main>
+
+</div>
+
+<script src="/static/app.js"></script>
+
+</body>
+</html>

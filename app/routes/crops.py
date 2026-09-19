@@ -3,8 +3,8 @@ from fastapi import APIRouter
 router = APIRouter()
 
 CROPS = [
-    {"id": 1, "name": "ধান", "type": "cereal"},
-    {"id": 2, "name": "গম", "type": "cereal"},
+    {"id": 1, "name": "Rice", "type": "cereal"},
+    {"id": 2, "name": "Wheat", "type": "cereal"},
 ]
 
 @router.get("/crops")
