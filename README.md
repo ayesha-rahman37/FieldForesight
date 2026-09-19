@@ -1,112 +1,125 @@
-# FieldForesight (YieldMax)
+# FieldForesight
 
-AI-powered crop yield prediction platform for Bangladeshi farmers, built for the International AI Builders Congress 2026 — AgriSphere AI domain, YieldMax challenge.
+FieldForesight is an AI-powered agricultural yield prediction system designed to help farmers and agricultural stakeholders estimate crop yield using historical agricultural data and machine learning.
 
-## Project Overview
+The system combines time-series forecasting, crop and region information, agricultural adjustment factors, prediction history, and a web-based interface to provide an accessible crop yield prediction workflow.
 
-FieldForesight predicts crop yield across seasons using historical weather and yield data, combined with scenario planning and Bangla-language advisory — helping smallholder farmers make informed decisions without requiring expensive hardware or sensors.
+---
 
-## Tech Stack
+## Overview
 
-- **Backend:** FastAPI (Python)
-- **ML/Prediction:** Prophet (time-series forecasting)
-- **Database:** PostgreSQL
-- **Frontend:** React
-- **LLM Advisory:** Groq API
-- **Deployment:** Render (backend) + Vercel (frontend)
+Agricultural yield can vary significantly depending on crop variety, cropping patterns, region, and historical production trends.
 
-## Project Structure
+FieldForesight aims to provide a data-driven prediction system where users can:
 
-```
-FieldForesight/
-├── app/
-│   ├── main.py              # FastAPI app entry point
-│   ├── models/
-│   │   └── schemas.py       # Request/response data models
-│   ├── routes/
-│   │   └── prediction.py    # API endpoints
-│   ├── services/
-│   │   └── prediction_service.py   # Core prediction logic
-│   └── data/                # Dataset & trained model (not tracked in git)
-├── train_model.py           # Script to train the Prophet model
-├── requirements.txt
-└── .gitignore
-```
+- Select a crop
+- Select a region
+- Select a crop variety
+- Select a cropping type
+- Generate a yield prediction
+- View the prediction confidence range
+- Store prediction results
+- View previous prediction records
+- Access prediction functionality through REST APIs
 
-## Setup Instructions
+The project is designed with a modular backend architecture so that additional agricultural intelligence, data sources, explainability, personalization, and risk analysis can be integrated into the system.
 
-### 1. Clone the repository
-```bash
-git clone https://github.com/ayesha-rahman37/FieldForesight.git
-cd FieldForesight
-```
+---
 
-### 2. Create and activate a virtual environment
-```bash
-python -m venv venv
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # Mac/Linux
-```
+## Key Features
 
-### 3. Install dependencies
-```bash
-pip install -r requirements.txt
-```
+### 1. Crop Yield Prediction
 
-### 4. Train the model
-**Important:** This step is required before running the server, as the trained model file is not tracked in git.
-```bash
-python train_model.py
-```
+FieldForesight uses a trained time-series forecasting model to generate crop yield predictions.
 
-### 5. Run the server
-```bash
-uvicorn app.main:app --reload
-```
+The prediction system considers:
 
-### 6. Test the API
-Open your browser and go to:
-```
-http://127.0.0.1:8000/docs
-```
+- Crop
+- Region
+- Variety
+- Cropping type
+- Historical yield trends
 
-## API Endpoints
+The system returns:
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/predict` | Returns yield prediction with confidence range |
+- Predicted yield
+- Lower prediction bound
+- Upper prediction bound
+- Prediction message
 
-### Example Request
+---
+
+### 2. Time-Series Forecasting
+
+The project uses Facebook Prophet for time-series forecasting.
+
+The forecasting pipeline:
+
+1. Loads historical agricultural yield data
+2. Prepares the time-series dataset
+3. Applies recent-anomaly weighting
+4. Trains the forecasting model
+5. Generates future forecasts
+6. Produces prediction intervals
+7. Saves the trained model for later use
+
+The trained model is serialized using Joblib.
+
+---
+
+### 3. Recent-Anomaly Weighting
+
+Recent historical observations receive additional importance during model training.
+
+The training pipeline gives additional weight to recent years by repeating recent observations in the training dataset.
+
+This helps the forecasting model pay more attention to recent agricultural trends and anomalies.
+
+---
+
+### 4. Variety Adjustment
+
+Different crop varieties can have different yield characteristics.
+
+FieldForesight includes configurable variety coefficients.
+
+Current examples include:
+
+| Variety | Coefficient |
+|---|---:|
+| HYV | 1.00 |
+| Local | 0.82 |
+
+The coefficient is applied to the base model prediction.
+
+---
+
+### 5. Cropping-Type Adjustment
+
+The system also supports cropping-type adjustments.
+
+Current cropping types include:
+
+| Cropping Type | Coefficient |
+|---|---:|
+| Single | 1.00 |
+| Intercrop | 0.88 |
+| Rotation | 0.95 |
+
+These coefficients are applied after the base time-series prediction.
+
+---
+
+### 6. Prediction Confidence Interval
+
+The prediction service returns an estimated prediction range using the lower and upper forecast bounds generated by Prophet.
+
+Example response:
+
 ```json
 {
-  "crop": "Rice",
-  "region": "Rangpur",
-  "variety": "HYV"
+    "predicted_yield": 4.25,
+    "lower_bound": 3.72,
+    "upper_bound": 4.81,
+    "message": "Yield prediction generated for Rice in Dhaka using HYV variety and single cropping."
 }
-```
-
-### Example Response
-```json
-{
-  "predicted_yield": 4.89,
-  "lower_bound": 4.67,
-  "upper_bound": 5.1,
-  "message": "Forecast ready for Rice in Rangpur"
-}
-```
-
-## Current Status
-
-- [x] Backend base structure
-- [x] Prophet model training pipeline
-- [x] Prediction API (dummy data)
-- [ ] Real historical dataset integration
-- [ ] Recent-anomaly weighting
-- [ ] Variety-aware & mixed-cropping support
-- [ ] Frontend (React)
-- [ ] Bangla advisory (Groq API)
-- [ ] Admin panel & authentication
-
-## Challenge
-
-**YieldMax** — Predictive yield optimization across seasons, under AgriSphere AI domain, International AI Builders Congress 2026.
