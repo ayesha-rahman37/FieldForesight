@@ -1,104 +1,217 @@
-# FieldForesight
+# FieldForesight (YieldMax)
 
-FieldForesight is an AI-powered agricultural yield prediction system designed to help farmers and agricultural stakeholders estimate crop yield using historical agricultural data and machine learning.
+AI-powered crop yield prediction platform for Bangladeshi farmers, built for the International AI Builders Congress 2026 — AgriSphere AI domain, YieldMax challenge.
 
-The system combines time-series forecasting, crop and region information, agricultural adjustment factors, prediction history, and a web-based interface to provide an accessible crop yield prediction workflow.
+## Project Overview
 
----
+FieldForesight predicts crop yield across seasons using historical yield data and time-series machine learning, combined with crop variety and cropping-type adjustments.
 
-## Overview
+The platform is designed to help farmers and agricultural stakeholders make data-driven yield decisions without requiring expensive hardware or sensors.
 
-Agricultural yield can vary significantly depending on crop variety, cropping patterns, region, and historical production trends.
+## Tech Stack
 
-FieldForesight aims to provide a data-driven prediction system where users can:
+- **Backend:** FastAPI (Python)
+- **ML/Prediction:** Prophet (time-series forecasting)
+- **Database:** SQLite with SQLAlchemy ORM
+- **Frontend:** HTML, CSS, JavaScript, Bootstrap
+- **Model Serialization:** Joblib
+- **API Documentation:** FastAPI Swagger UI
 
-- Select a crop
-- Select a region
-- Select a crop variety
-- Select a cropping type
-- Generate a yield prediction
-- View the prediction confidence range
-- Store prediction results
-- View previous prediction records
-- Access prediction functionality through REST APIs
+## Project Structure
 
-The project is designed with a modular backend architecture so that additional agricultural intelligence, data sources, explainability, personalization, and risk analysis can be integrated into the system.
+```text
+FieldForesight/
 
----
+├── app/
+│   ├── main.py                         # FastAPI application entry point
+│   ├── database.py                     # Database configuration
+│   │
+│   ├── models/
+│   │   ├── schemas.py                  # Prediction request/response models
+│   │   ├── prediction_history.py       # Prediction history database model
+│   │   ├── user.py
+│   │   ├── role.py
+│   │   ├── session.py
+│   │   ├── user_preference.py
+│   │   ├── explainability_cache.py
+│   │   └── ndvi_cache.py
+│   │
+│   ├── routes/
+│   │   ├── prediction.py               # Yield prediction API
+│   │   ├── history.py                  # Prediction history API
+│   │   ├── crops.py                    # Crop API
+│   │   ├── regions.py                  # Region API
+│   │   ├── auth.py
+│   │   ├── explainability.py
+│   │   ├── scenario_planner.py
+│   │   ├── personalization.py
+│   │   ├── ndvi.py
+│   │   ├── community.py
+│   │   └── data_ownership.py
+│   │
+│   ├── services/
+│   │   ├── prediction_service.py       # Core prediction logic
+│   │   ├── adjustment_rules.py         # Variety and cropping adjustments
+│   │   ├── auth_service.py
+│   │   ├── explainability_service.py
+│   │   ├── scenario_planner_service.py
+│   │   ├── personalization_service.py
+│   │   ├── ndvi_service.py
+│   │   └── data_ownership_service.py
+│   │
+│   ├── data/                           # Dataset and trained model
+│   ├── templates/
+│   │   └── index.html                  # Web dashboard
+│   └── static/
+│       └── style.css                   # Frontend styling
+│
+├── train_model.py                      # Prophet model training
+├── requirements.txt
+└── .gitignore
+```
 
-## Key Features
+## Setup Instructions
 
-### 1. Crop Yield Prediction
+### 1. Clone the repository
 
-FieldForesight uses a trained time-series forecasting model to generate crop yield predictions.
+```bash
+git clone https://github.com/ayesha-rahman37/FieldForesight.git
+cd FieldForesight
+```
 
-The prediction system considers:
+### 2. Create and activate a virtual environment
 
-- Crop
-- Region
-- Variety
-- Cropping type
-- Historical yield trends
+```bash
+python -m venv venv
+```
 
-The system returns:
+Windows:
 
-- Predicted yield
-- Lower prediction bound
-- Upper prediction bound
-- Prediction message
+```bash
+venv\Scripts\activate
+```
 
----
+Mac/Linux:
 
-### 2. Time-Series Forecasting
+```bash
+source venv/bin/activate
+```
 
-The project uses Facebook Prophet for time-series forecasting.
+### 3. Install dependencies
 
-The forecasting pipeline:
+```bash
+pip install -r requirements.txt
+```
 
-1. Loads historical agricultural yield data
-2. Prepares the time-series dataset
-3. Applies recent-anomaly weighting
-4. Trains the forecasting model
-5. Generates future forecasts
-6. Produces prediction intervals
-7. Saves the trained model for later use
+### 4. Train the model
 
-The trained model is serialized using Joblib.
+**Important:** The trained model file is generated locally and is not tracked in git.
 
----
+Make sure the required historical dataset is available and run:
 
-### 3. Recent-Anomaly Weighting
+```bash
+python train_model.py
+```
 
-Recent historical observations receive additional importance during model training.
+The trained model will be saved as:
 
-The training pipeline gives additional weight to recent years by repeating recent observations in the training dataset.
+```text
+app/data/trained_model.pkl
+```
 
-This helps the forecasting model pay more attention to recent agricultural trends and anomalies.
+### 5. Run the server
 
----
+```bash
+uvicorn app.main:app --reload
+```
 
-### 4. Variety Adjustment
+The application will be available at:
 
-Different crop varieties can have different yield characteristics.
+```text
+http://127.0.0.1:8000
+```
 
-FieldForesight includes configurable variety coefficients.
+### 6. Open the web dashboard
 
-Current examples include:
+```text
+http://127.0.0.1:8000
+```
+
+### 7. Test the API
+
+Open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/predict` | Returns crop yield prediction with confidence range |
+| GET | `/api/predictions/history` | Returns previous prediction records |
+| GET | `/api/crops` | Returns available crops |
+| GET | `/api/regions` | Returns available regions |
+
+Additional modules are available for authentication, explainability, scenario planning, personalization, NDVI, community features, and data ownership.
+
+## Prediction API
+
+### Example Request
+
+```json
+{
+  "crop": "Rice",
+  "region": "Rangpur",
+  "variety": "HYV",
+  "cropping_type": "single"
+}
+```
+
+### Example Response
+
+```json
+{
+  "predicted_yield": 4.89,
+  "lower_bound": 4.67,
+  "upper_bound": 5.10,
+  "message": "Yield prediction generated for Rice in Rangpur using HYV variety and single cropping."
+}
+```
+
+## Prediction Logic
+
+The prediction system uses Prophet for time-series forecasting.
+
+The prediction pipeline is:
+
+```text
+Historical Yield Data
+        ↓
+Recent-Anomaly Weighting
+        ↓
+Prophet Forecasting
+        ↓
+Base Yield Prediction
+        ↓
+Variety Adjustment
+        ↓
+Cropping-Type Adjustment
+        ↓
+Final Prediction
+        ↓
+Prediction History
+```
+
+### Variety Support
 
 | Variety | Coefficient |
 |---|---:|
 | HYV | 1.00 |
 | Local | 0.82 |
 
-The coefficient is applied to the base model prediction.
-
----
-
-### 5. Cropping-Type Adjustment
-
-The system also supports cropping-type adjustments.
-
-Current cropping types include:
+### Cropping-Type Support
 
 | Cropping Type | Coefficient |
 |---|---:|
@@ -106,20 +219,23 @@ Current cropping types include:
 | Intercrop | 0.88 |
 | Rotation | 0.95 |
 
-These coefficients are applied after the base time-series prediction.
+## Prediction History
 
----
+Each successful prediction is stored in the database.
 
-### 6. Prediction Confidence Interval
+Stored information includes:
 
-The prediction service returns an estimated prediction range using the lower and upper forecast bounds generated by Prophet.
+- Crop
+- Region
+- Variety
+- Cropping type
+- Predicted yield
+- Lower prediction bound
+- Upper prediction bound
+- Prediction timestamp
 
-Example response:
+The stored records can be retrieved using:
 
-```json
-{
-    "predicted_yield": 4.25,
-    "lower_bound": 3.72,
-    "upper_bound": 4.81,
-    "message": "Yield prediction generated for Rice in Dhaka using HYV variety and single cropping."
-}
+```text
+GET /api/predictions/history
+```
