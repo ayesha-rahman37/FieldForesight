@@ -1,7 +1,8 @@
-import joblib
 import os
+import joblib
 
 from app.services.adjustment_rules import apply_adjustments
+
 
 MODEL_PATH = os.path.join(
     os.path.dirname(__file__),
@@ -17,16 +18,24 @@ def get_prediction(
     variety: str = "HYV",
     cropping_type: str = "single"
 ):
-    # Load the model only when prediction is requested
+    if not os.path.exists(MODEL_PATH):
+        raise FileNotFoundError(
+            "Trained model not found. Please train the model first."
+        )
+
     model = joblib.load(MODEL_PATH)
 
-    future = model.make_future_dataframe(periods=1, freq="YE")
+    future = model.make_future_dataframe(
+        periods=1,
+        freq="YE"
+    )
+
     forecast = model.predict(future)
     latest = forecast.iloc[-1]
 
-    base_yield = latest["yhat"]
-    lower = latest["yhat_lower"]
-    upper = latest["yhat_upper"]
+    base_yield = float(latest["yhat"])
+    lower = float(latest["yhat_lower"])
+    upper = float(latest["yhat_upper"])
 
     adjusted_yield = apply_adjustments(
         base_yield,
@@ -47,11 +56,12 @@ def get_prediction(
     )
 
     return {
-        "predicted_yield": adjusted_yield,
-        "lower_bound": adjusted_lower,
-        "upper_bound": adjusted_upper,
+        "predicted_yield": round(adjusted_yield, 2),
+        "lower_bound": round(adjusted_lower, 2),
+        "upper_bound": round(adjusted_upper, 2),
         "message": (
-            f"Forecast ready for {crop} "
-            f"({variety}, {cropping_type}) in {region}"
-        ),
+            f"Yield prediction generated for {crop} "
+            f"in {region} using {variety} variety "
+            f"and {cropping_type} cropping."
+        )
     }
