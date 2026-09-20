@@ -18,6 +18,7 @@ from app.models.prediction_history import PredictionHistory
 from app.routes import history
 from app.routes import auth
 from app.routes import historical_data
+from app.routes import mixed_crop
 
 
 Base.metadata.create_all(bind=engine)
@@ -44,6 +45,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(crops.router, prefix="/api", tags=["Crops"])
 app.include_router(regions.router, prefix="/api", tags=["Regions"])
 app.include_router(historical_data.router, prefix="/api", tags=["Historical Data"])
+app.include_router(mixed_crop.router, prefix="/api", tags=["Mixed Cropping"])
 
 
 @app.get("/")
