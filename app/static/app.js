@@ -21,6 +21,11 @@ const farmId = "farm_" + Date.now();
 
 async function loadOptions() {
 
+    cropSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+    regionSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+    cropSelect.disabled = true;
+    regionSelect.disabled = true;
+
     try {
 
         const [cropResponse, regionResponse] = await Promise.all([
@@ -34,6 +39,9 @@ async function loadOptions() {
 
         const crops = await cropResponse.json();
         const regions = await regionResponse.json();
+
+        cropSelect.innerHTML = '<option value="">Select crop</option>';
+        regionSelect.innerHTML = '<option value="">Select region</option>';
 
         crops.forEach(crop => {
 
@@ -64,7 +72,13 @@ async function loadOptions() {
 
     } catch (error) {
 
+        cropSelect.innerHTML = '<option value="">লোড ব্যর্থ হয়েছে</option>';
+        regionSelect.innerHTML = '<option value="">লোড ব্যর্থ হয়েছে</option>';
         showError("Could not load crop and region information.");
+
+    } finally {
+        cropSelect.disabled = false;
+        regionSelect.disabled = false;
     }
 }
 
@@ -193,6 +207,12 @@ const trendChartCanvas = document.getElementById("trendChart");
 let trendChartInstance = null;
 
 async function loadHistOptions() {
+
+    histCropSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+    histRegionSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+    histCropSelect.disabled = true;
+    histRegionSelect.disabled = true;
+
     try {
         const [cropResponse, regionResponse] = await Promise.all([
             fetch("/api/crops"),
@@ -201,6 +221,9 @@ async function loadHistOptions() {
 
         const crops = await cropResponse.json();
         const regions = await regionResponse.json();
+
+        histCropSelect.innerHTML = '<option value="">Select crop</option>';
+        histRegionSelect.innerHTML = '<option value="">Select region</option>';
 
         crops.forEach(crop => {
             const option = document.createElement("option");
@@ -216,7 +239,12 @@ async function loadHistOptions() {
             histRegionSelect.appendChild(option);
         });
     } catch (error) {
+        histCropSelect.innerHTML = '<option value="">লোড ব্যর্থ হয়েছে</option>';
+        histRegionSelect.innerHTML = '<option value="">লোড ব্যর্থ হয়েছে</option>';
         console.error("Historical dropdown load failed:", error);
+    } finally {
+        histCropSelect.disabled = false;
+        histRegionSelect.disabled = false;
     }
 }
 
@@ -228,6 +256,9 @@ showTrendBtn.addEventListener("click", async function () {
         alert("Crop ও Region দুটোই সিলেক্ট করুন।");
         return;
     }
+
+    showTrendBtn.disabled = true;
+    showTrendBtn.textContent = "Loading...";
 
     try {
         const response = await fetch(
@@ -281,6 +312,9 @@ showTrendBtn.addEventListener("click", async function () {
 
     } catch (error) {
         alert(error.message);
+    } finally {
+        showTrendBtn.disabled = false;
+        showTrendBtn.textContent = "Show Trend";
     }
 });
 
