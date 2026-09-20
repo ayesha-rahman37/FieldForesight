@@ -64,7 +64,8 @@ def load_data():
 
     session.commit()
     session.close()
-    print(f"{inserted}টা row database-এ লোড হয়েছে।")
+    print(f"{inserted} rows have been loaded into the database.")
+    
 
 if __name__ == "__main__":
     load_data()

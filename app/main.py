@@ -17,6 +17,9 @@ from app.routes import prediction
 from app.models.prediction_history import PredictionHistory
 from app.routes import history
 from app.routes import auth
+from app.routes import historical_data
+
+
 Base.metadata.create_all(bind=engine)
 from app.routes import crops, regions  # prediction আপাতত বাদ
 app = FastAPI(title="FieldForesight API", version="1.0")
@@ -40,6 +43,7 @@ app.include_router(prediction.router, prefix="/api", tags=["Prediction"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(crops.router, prefix="/api", tags=["Crops"])
 app.include_router(regions.router, prefix="/api", tags=["Regions"])
+app.include_router(historical_data.router, prefix="/api", tags=["Historical Data"])
 
 
 @app.get("/")

@@ -11,6 +11,7 @@ const predictedYield = document.getElementById("predictedYield");
 const lowerBound = document.getElementById("lowerBound");
 const upperBound = document.getElementById("upperBound");
 const forecastMessage = document.getElementById("forecastMessage");
+const validationNote = document.getElementById("validationNote");
 
 const errorBox = document.getElementById("errorBox");
 
@@ -114,6 +115,9 @@ predictionForm.addEventListener("submit", async function (event) {
 
         forecastMessage.textContent = data.message;
 
+        validationNote.textContent =
+            `এই পূর্বাভাস ${region}-এর ঐতিহাসিক ডেটার ভিত্তিতে, ${variety} জাত ও ${croppingType} পদ্ধতি বিবেচনা করে তৈরি।`;
+
         emptyResult.classList.add("d-none");
         resultContent.classList.remove("d-none");
 
@@ -144,4 +148,108 @@ function hideError() {
 }
 
 
+// ---------- Historical Trend Graph ----------
+
+const histCropSelect = document.getElementById("histCrop");
+const histRegionSelect = document.getElementById("histRegion");
+const showTrendBtn = document.getElementById("showTrendBtn");
+const trendEmpty = document.getElementById("trendEmpty");
+const trendChartCanvas = document.getElementById("trendChart");
+
+let trendChartInstance = null;
+
+async function loadHistOptions() {
+    try {
+        const [cropResponse, regionResponse] = await Promise.all([
+            fetch("/api/crops"),
+            fetch("/api/regions")
+        ]);
+
+        const crops = await cropResponse.json();
+        const regions = await regionResponse.json();
+
+        crops.forEach(crop => {
+            const option = document.createElement("option");
+            option.value = crop.name;
+            option.textContent = crop.name;
+            histCropSelect.appendChild(option);
+        });
+
+        regions.forEach(region => {
+            const option = document.createElement("option");
+            option.value = region.name;
+            option.textContent = region.name;
+            histRegionSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Historical dropdown load failed:", error);
+    }
+}
+
+showTrendBtn.addEventListener("click", async function () {
+    const crop = histCropSelect.value;
+    const region = histRegionSelect.value;
+
+    if (!crop || !region) {
+        alert("Crop ও Region দুটোই সিলেক্ট করুন।");
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            `/api/historical-data?crop=${encodeURIComponent(crop)}&region=${encodeURIComponent(region)}`
+        );
+
+        if (!response.ok) {
+            throw new Error("Historical data পাওয়া যায়নি।");
+        }
+
+        const data = await response.json();
+
+        if (!data.years || data.years.length === 0) {
+            trendEmpty.textContent = "এই Crop ও Region-এর জন্য কোনো historical data নেই।";
+            trendEmpty.classList.remove("d-none");
+            trendChartCanvas.classList.add("d-none");
+            return;
+        }
+
+        trendEmpty.classList.add("d-none");
+        trendChartCanvas.classList.remove("d-none");
+
+        if (trendChartInstance) {
+            trendChartInstance.destroy();
+        }
+
+        trendChartInstance = new Chart(trendChartCanvas, {
+            type: "line",
+            data: {
+                labels: data.years,
+                datasets: [
+                    {
+                        label: "Yield (ton/hectare)",
+                        data: data.yield,
+                        borderColor: "#22c55e",
+                        tension: 0.3
+                    },
+                    {
+                        label: "Rainfall (mm)",
+                        data: data.rainfall,
+                        borderColor: "#3b82f6",
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: "top" } }
+            }
+        });
+
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+
 loadOptions();
+loadHistOptions();
