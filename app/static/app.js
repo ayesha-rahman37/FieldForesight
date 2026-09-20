@@ -15,6 +15,9 @@ const validationNote = document.getElementById("validationNote");
 
 const errorBox = document.getElementById("errorBox");
 
+const mixedCropsSelect = document.getElementById("mixedCrops");
+const farmId = "farm_" + Date.now();
+
 
 async function loadOptions() {
 
@@ -40,6 +43,13 @@ async function loadOptions() {
             option.textContent = crop.name;
 
             cropSelect.appendChild(option);
+        });
+
+        crops.forEach(crop => {
+            const mixedOption = document.createElement("option");
+            mixedOption.value = crop.name;
+            mixedOption.textContent = crop.name;
+            mixedCropsSelect.appendChild(mixedOption);
         });
 
         regions.forEach(region => {
@@ -120,6 +130,30 @@ predictionForm.addEventListener("submit", async function (event) {
 
         emptyResult.classList.add("d-none");
         resultContent.classList.remove("d-none");
+
+        // Cropping type single না হলে ও crop select করা থাকলে mixed-crop data save করা
+        if (croppingType !== "single") {
+            const selectedMixedCrops = Array.from(mixedCropsSelect.selectedOptions).map(o => o.value);
+
+            if (selectedMixedCrops.length > 0) {
+                try {
+                    await fetch("/api/mixed-crop", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            farm_id: farmId,
+                            relation_type: croppingType,
+                            crops: selectedMixedCrops.map((cropName, index) => ({
+                                crop: cropName,
+                                sequence_order: index + 1
+                            }))
+                        })
+                    });
+                } catch (err) {
+                    console.error("Mixed crop save failed:", err);
+                }
+            }
+        }
 
     } catch (error) {
 
