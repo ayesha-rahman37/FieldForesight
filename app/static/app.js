@@ -15,8 +15,16 @@ const validationNote = document.getElementById("validationNote");
 
 const errorBox = document.getElementById("errorBox");
 
+const mixedCropsSelect = document.getElementById("mixedCrops");
+const farmId = "farm_" + Date.now();
+
 
 async function loadOptions() {
+
+    cropSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+    regionSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+    cropSelect.disabled = true;
+    regionSelect.disabled = true;
 
     try {
 
@@ -32,6 +40,9 @@ async function loadOptions() {
         const crops = await cropResponse.json();
         const regions = await regionResponse.json();
 
+        cropSelect.innerHTML = '<option value="">Select crop</option>';
+        regionSelect.innerHTML = '<option value="">Select region</option>';
+
         crops.forEach(crop => {
 
             const option = document.createElement("option");
@@ -40,6 +51,13 @@ async function loadOptions() {
             option.textContent = crop.name;
 
             cropSelect.appendChild(option);
+        });
+
+        crops.forEach(crop => {
+            const mixedOption = document.createElement("option");
+            mixedOption.value = crop.name;
+            mixedOption.textContent = crop.name;
+            mixedCropsSelect.appendChild(mixedOption);
         });
 
         regions.forEach(region => {
@@ -54,7 +72,13 @@ async function loadOptions() {
 
     } catch (error) {
 
+        cropSelect.innerHTML = '<option value="">লোড ব্যর্থ হয়েছে</option>';
+        regionSelect.innerHTML = '<option value="">লোড ব্যর্থ হয়েছে</option>';
         showError("Could not load crop and region information.");
+
+    } finally {
+        cropSelect.disabled = false;
+        regionSelect.disabled = false;
     }
 }
 
@@ -121,6 +145,30 @@ predictionForm.addEventListener("submit", async function (event) {
         emptyResult.classList.add("d-none");
         resultContent.classList.remove("d-none");
 
+        // Cropping type single না হলে ও crop select করা থাকলে mixed-crop data save করা
+        if (croppingType !== "single") {
+            const selectedMixedCrops = Array.from(mixedCropsSelect.selectedOptions).map(o => o.value);
+
+            if (selectedMixedCrops.length > 0) {
+                try {
+                    await fetch("/api/mixed-crop", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            farm_id: farmId,
+                            relation_type: croppingType,
+                            crops: selectedMixedCrops.map((cropName, index) => ({
+                                crop: cropName,
+                                sequence_order: index + 1
+                            }))
+                        })
+                    });
+                } catch (err) {
+                    console.error("Mixed crop save failed:", err);
+                }
+            }
+        }
+
     } catch (error) {
 
         showError(error.message);
@@ -159,6 +207,12 @@ const trendChartCanvas = document.getElementById("trendChart");
 let trendChartInstance = null;
 
 async function loadHistOptions() {
+
+    histCropSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+    histRegionSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+    histCropSelect.disabled = true;
+    histRegionSelect.disabled = true;
+
     try {
         const [cropResponse, regionResponse] = await Promise.all([
             fetch("/api/crops"),
@@ -167,6 +221,9 @@ async function loadHistOptions() {
 
         const crops = await cropResponse.json();
         const regions = await regionResponse.json();
+
+        histCropSelect.innerHTML = '<option value="">Select crop</option>';
+        histRegionSelect.innerHTML = '<option value="">Select region</option>';
 
         crops.forEach(crop => {
             const option = document.createElement("option");
@@ -182,7 +239,12 @@ async function loadHistOptions() {
             histRegionSelect.appendChild(option);
         });
     } catch (error) {
+        histCropSelect.innerHTML = '<option value="">লোড ব্যর্থ হয়েছে</option>';
+        histRegionSelect.innerHTML = '<option value="">লোড ব্যর্থ হয়েছে</option>';
         console.error("Historical dropdown load failed:", error);
+    } finally {
+        histCropSelect.disabled = false;
+        histRegionSelect.disabled = false;
     }
 }
 
@@ -194,6 +256,9 @@ showTrendBtn.addEventListener("click", async function () {
         alert("Crop ও Region দুটোই সিলেক্ট করুন।");
         return;
     }
+
+    showTrendBtn.disabled = true;
+    showTrendBtn.textContent = "Loading...";
 
     try {
         const response = await fetch(
@@ -247,6 +312,9 @@ showTrendBtn.addEventListener("click", async function () {
 
     } catch (error) {
         alert(error.message);
+    } finally {
+        showTrendBtn.disabled = false;
+        showTrendBtn.textContent = "Show Trend";
     }
 });
 
