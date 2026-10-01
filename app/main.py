@@ -7,6 +7,10 @@ from app.models.user_preference import UserPreference
 from app.models.user import User
 from app.models.role import Role
 from app.models.session import UserSession
+from app.models.prediction_history import PredictionHistory
+from app.models.model_metadata import ModelMetadata
+from app.models.forecast_cache import ForecastCache
+from app.models.processed_dataset import ProcessedDataset
 from app.routes.community import router as community_router
 from app.routes.data_ownership import router as data_ownership_router
 from app.routes.explainability import router as explainability_router
@@ -14,7 +18,6 @@ from app.routes.scenario_planner import router as scenario_planner_router
 from app.routes.personalization import router as personalization_router
 from app.routes.ndvi import router as ndvi_router
 from app.routes import prediction
-from app.models.prediction_history import PredictionHistory
 from app.routes import history
 from app.routes import auth
 from app.routes import historical_data
@@ -22,7 +25,7 @@ from app.routes import mixed_crop
 
 
 Base.metadata.create_all(bind=engine)
-from app.routes import crops, regions  # prediction আপাতত বাদ
+from app.routes import crops, regions
 app = FastAPI(title="FieldForesight API", version="1.0")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
