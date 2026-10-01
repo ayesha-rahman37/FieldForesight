@@ -1,33 +1,13 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-
-from app.database import get_db
-from app.models.model_metadata import ModelMetadata
-
+from fastapi import APIRouter
 
 router = APIRouter()
 
+CROPS = [
+    {"id": 1, "name": "Rice", "type": "cereal"},
+    {"id": 2, "name": "Wheat", "type": "cereal"},
+]
+
 
 @router.get("/crops")
-def get_crops(
-    db: Session = Depends(get_db)
-):
-    rows = (
-        db.query(
-            ModelMetadata.crop
-        )
-        .distinct()
-        .order_by(
-            ModelMetadata.crop
-        )
-        .all()
-    )
-
-    return [
-        {
-            "id": index + 1,
-            "name": row[0],
-            "type": "cereal"
-        }
-        for index, row in enumerate(rows)
-    ]
+def get_crops():
+    return CROPS

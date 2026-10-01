@@ -5,6 +5,10 @@ from app.database import get_db
 from app.models.crop import Crop
 from app.models.region import Region
 from app.models.historical_yield import HistoricalYield
+from app.services.regional_fallback import (
+    get_regional_historical_data,
+)
+
 
 router = APIRouter()
 
@@ -13,26 +17,69 @@ router = APIRouter()
 def get_historical_data(
     crop: str,
     region: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    crop_obj = db.query(Crop).filter(Crop.name == crop).first()
-    region_obj = db.query(Region).filter(Region.name == region).first()
+    crop_obj = (
+        db.query(Crop)
+        .filter(Crop.name == crop)
+        .first()
+    )
+
+    region_obj = (
+        db.query(Region)
+        .filter(Region.name == region)
+        .first()
+    )
 
     if not crop_obj or not region_obj:
-        raise HTTPException(status_code=404, detail="Crop অথবা Region পাওয়া যায়নি।")
+        raise HTTPException(
+            status_code=404,
+            detail="Crop or region was not found.",
+        )
 
     records = (
         db.query(HistoricalYield)
         .filter(
             HistoricalYield.crop_id == crop_obj.id,
-            HistoricalYield.region_id == region_obj.id
+            HistoricalYield.region_id == region_obj.id,
         )
-        .order_by(HistoricalYield.year.asc())
+        .order_by(
+            HistoricalYield.year.asc()
+        )
         .all()
     )
 
-    return {
-        "years": [r.year for r in records],
-        "rainfall": [r.rainfall for r in records],
-        "yield": [r.yield_value for r in records]
-    }
+    # ---------------------------------------------------------
+    # LOCAL HISTORICAL DATA
+    # ---------------------------------------------------------
+    if records:
+        return {
+            "years": [
+                r.year
+                for r in records
+            ],
+            "rainfall": [
+                r.rainfall
+                for r in records
+            ],
+            "yield": [
+                r.yield_value
+                for r in records
+            ],
+            "source_type": "local_historical",
+        }
+
+    # ---------------------------------------------------------
+    # FALLBACK HISTORICAL DATA
+    # ---------------------------------------------------------
+    try:
+        return get_regional_historical_data(
+            crop=crop,
+            region=region,
+        )
+
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc
