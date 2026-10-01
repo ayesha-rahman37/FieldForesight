@@ -1,32 +1,13 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-
-from app.database import get_db
-from app.models.model_metadata import ModelMetadata
-
+from fastapi import APIRouter
 
 router = APIRouter()
 
+REGIONS = [
+    {"id": 1, "name": "Dhaka"},
+    {"id": 2, "name": "Rangpur"},
+]
+
 
 @router.get("/regions")
-def get_regions(
-    db: Session = Depends(get_db)
-):
-    rows = (
-        db.query(
-            ModelMetadata.region
-        )
-        .distinct()
-        .order_by(
-            ModelMetadata.region
-        )
-        .all()
-    )
-
-    return [
-        {
-            "id": index + 1,
-            "name": row[0]
-        }
-        for index, row in enumerate(rows)
-    ]
+def get_regions():
+    return REGIONS
