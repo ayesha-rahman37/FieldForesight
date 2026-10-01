@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 
 from app.database import Base, SessionLocal, engine
@@ -9,6 +11,7 @@ from app.models.region import Region
 Base.metadata.create_all(bind=engine)
 
 CSV_PATH = "app/data/historical_yield.csv"
+WEATHER_PATH = "app/data/weather_yearly.csv"
 
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -68,6 +71,56 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def load_weather_data() -> pd.DataFrame:
+    if not os.path.exists(WEATHER_PATH):
+        raise FileNotFoundError(
+            f"Weather data file not found: {WEATHER_PATH}"
+        )
+
+    weather = pd.read_csv(
+        WEATHER_PATH
+    )
+
+    required_columns = {
+        "year",
+        "total_rainfall"
+    }
+
+    missing_columns = (
+        required_columns - set(weather.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Missing weather columns: "
+            + ", ".join(sorted(missing_columns))
+        )
+
+    weather["year"] = pd.to_numeric(
+        weather["year"],
+        errors="coerce"
+    )
+
+    weather["total_rainfall"] = pd.to_numeric(
+        weather["total_rainfall"],
+        errors="coerce"
+    )
+
+    weather = weather.dropna(
+        subset=[
+            "year",
+            "total_rainfall"
+        ]
+    )
+
+    return weather[
+        [
+            "year",
+            "total_rainfall"
+        ]
+    ]
+
+
 def get_or_create(
     session,
     model,
@@ -89,15 +142,29 @@ def get_or_create(
 
 
 def load_data():
-    df = pd.read_csv(CSV_PATH)
+    yield_df = pd.read_csv(
+        CSV_PATH
+    )
 
-    df = clean_data(df)
+    yield_df = clean_data(
+        yield_df
+    )
+
+    weather_df = load_weather_data()
+
+    merged_df = yield_df.merge(
+        weather_df,
+        on="year",
+        how="left"
+    )
 
     session = SessionLocal()
+
     inserted = 0
+    updated = 0
 
     try:
-        for _, row in df.iterrows():
+        for _, row in merged_df.iterrows():
 
             crop_obj = get_or_create(
                 session,
@@ -111,23 +178,55 @@ def load_data():
                 row["region"]
             )
 
-            record = HistoricalYield(
-                crop_id=crop_obj.id,
-                region_id=region_obj.id,
-                year=int(row["year"]),
-                rainfall=None,
-                yield_value=float(
-                    row["yield_tons_per_hectare"]
+            existing = (
+                session.query(HistoricalYield)
+                .filter(
+                    HistoricalYield.crop_id == crop_obj.id,
+                    HistoricalYield.region_id == region_obj.id,
+                    HistoricalYield.year == int(row["year"])
                 )
+                .first()
             )
 
-            session.add(record)
-            inserted += 1
+            rainfall = (
+                float(row["total_rainfall"])
+                if not pd.isna(row["total_rainfall"])
+                else None
+            )
+
+            if existing:
+                existing.rainfall = rainfall
+                existing.yield_value = float(
+                    row["yield_tons_per_hectare"]
+                )
+                updated += 1
+
+            else:
+                record = HistoricalYield(
+                    crop_id=crop_obj.id,
+                    region_id=region_obj.id,
+                    year=int(row["year"]),
+                    rainfall=rainfall,
+                    yield_value=float(
+                        row["yield_tons_per_hectare"]
+                    )
+                )
+
+                session.add(record)
+                inserted += 1
 
         session.commit()
 
         print(
-            f"{inserted} historical yield records loaded successfully."
+            f"{inserted} new records inserted."
+        )
+
+        print(
+            f"{updated} existing records updated."
+        )
+
+        print(
+            "Historical yield and rainfall data loaded successfully."
         )
 
     except Exception:
