@@ -31,54 +31,55 @@ def get_historical_data(
         .first()
     )
 
-    if not crop_obj or not region_obj:
-        raise HTTPException(
-            status_code=404,
-            detail="Crop or region was not found.",
-        )
-
-    records = (
-        db.query(HistoricalYield)
-        .filter(
-            HistoricalYield.crop_id == crop_obj.id,
-            HistoricalYield.region_id == region_obj.id,
-        )
-        .order_by(
-            HistoricalYield.year.asc()
-        )
-        .all()
-    )
-
     # ---------------------------------------------------------
     # LOCAL HISTORICAL DATA
     # ---------------------------------------------------------
-    if records:
-        return {
-            "years": [
-                r.year
-                for r in records
-            ],
-            "rainfall": [
-                r.rainfall
-                for r in records
-            ],
-            "yield": [
-                r.yield_value
-                for r in records
-            ],
-            "source_type": "local_historical",
-        }
+    # Use local database data only when both crop and region
+    # exist and matching historical records are available.
+
+    if crop_obj and region_obj:
+
+        records = (
+            db.query(HistoricalYield)
+            .filter(
+                HistoricalYield.crop_id == crop_obj.id,
+                HistoricalYield.region_id == region_obj.id,
+            )
+            .order_by(
+                HistoricalYield.year.asc()
+            )
+            .all()
+        )
+
+        if records:
+            return {
+                "years": [
+                    r.year
+                    for r in records
+                ],
+                "rainfall": [
+                    r.rainfall
+                    for r in records
+                ],
+                "yield": [
+                    r.yield_value
+                    for r in records
+                ],
+                "source_type": "local_historical",
+            }
 
     # ---------------------------------------------------------
     # FALLBACK HISTORICAL DATA
     # ---------------------------------------------------------
     try:
+
         return get_regional_historical_data(
             crop=crop,
             region=region,
         )
 
     except FileNotFoundError as exc:
+
         raise HTTPException(
             status_code=404,
             detail=str(exc),
