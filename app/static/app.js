@@ -265,14 +265,33 @@ predictionForm.addEventListener(
                 });
 
 
-            const data =
-                await response.json();
+            let data;
+
+            const contentType =
+                response.headers.get("content-type") || "";
+
+            if (contentType.includes("application/json")) {
+
+                data = await response.json();
+
+            } else {
+
+                const text =
+                    await response.text();
+
+                throw new Error(
+                    text ||
+                    `Prediction request failed with status ${response.status}.`
+                );
+            }
 
 
             if (!response.ok) {
 
                 throw new Error(
-                    data.detail || "Prediction failed."
+                    data.detail ||
+                    data.message ||
+                    "Prediction failed."
                 );
             }
 
@@ -447,8 +466,34 @@ async function loadHistoricalTrend() {
         }
 
 
-        const data =
-            await response.json();
+            let data;
+
+            const contentType =
+                response.headers.get("content-type") || "";
+
+            if (contentType.includes("application/json")) {
+
+                data = await response.json();
+
+            } else {
+
+                const text =
+                    await response.text();
+
+                throw new Error(
+                    text ||
+                    `Historical data request failed with status ${response.status}.`
+                );
+            }
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    data.message ||
+                    "Historical data could not be loaded."
+                );
+            }
 
 
         if (
