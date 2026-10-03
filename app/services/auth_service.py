@@ -6,6 +6,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models.user import User
 from app.models.session import UserSession
+from app.models.role import Role
 
 
 security = HTTPBearer()
@@ -57,3 +58,20 @@ def get_current_user(
         )
 
     return user
+def get_current_admin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    role = (
+        db.query(Role)
+        .filter(Role.id == current_user.role_id)
+        .first()
+    )
+
+    if not role or role.name != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+
+    return current_user
