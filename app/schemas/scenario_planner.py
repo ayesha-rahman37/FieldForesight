@@ -6,6 +6,7 @@ class ScenarioRequest(BaseModel):
     variety: str = "HYV"
     cropping_type: str = "single"
     rainfall_adjustment_percent: float = 0.0   # -50 to +50 (slider value)
+    temperature_adjustment_percent: float = 0.0 # -50 to +50 (slider value)
 
 class ScenarioResponse(BaseModel):
     original_yield: float

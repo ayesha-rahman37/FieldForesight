@@ -1,16 +1,25 @@
+
+from app.database import Base, engine
 import os
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi import FastAPI
-from app.database import Base, engine
+from fastapi.middleware.cors import CORSMiddleware
 from app.models.user_preference import UserPreference
 from app.models.user import User
 from app.models.role import Role
 from app.models.session import UserSession
-from app.models.prediction_history import PredictionHistory
 from app.models.model_metadata import ModelMetadata
 from app.models.forecast_cache import ForecastCache
 from app.models.processed_dataset import ProcessedDataset
+from app.models.ndvi_cache import NDVICache
+from app.models.explainability_cache import ExplainabilityCache
+from app.models.historical_yield import HistoricalYield
+from app.models.crop import Crop
+from app.models.region import Region
+from app.models.mixed_cropping import MixedCroppingMapping
+from app.models.prediction_history import PredictionHistory
+
 from app.routes.community import router as community_router
 from app.routes.data_ownership import router as data_ownership_router
 from app.routes.explainability import router as explainability_router
@@ -22,11 +31,32 @@ from app.routes import history
 from app.routes import auth
 from app.routes import historical_data
 from app.routes import mixed_crop
-
+from app.routes import crops, regions
+from app.routes.advisory_risk import router as advisory_risk_router
 
 Base.metadata.create_all(bind=engine)
-from app.routes import crops, regions
+
 app = FastAPI(title="FieldForesight API", version="1.0")
+
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+origins = [
+    frontend_origin,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -49,6 +79,7 @@ app.include_router(crops.router, prefix="/api", tags=["Crops"])
 app.include_router(regions.router, prefix="/api", tags=["Regions"])
 app.include_router(historical_data.router, prefix="/api", tags=["Historical Data"])
 app.include_router(mixed_crop.router, prefix="/api", tags=["Mixed Cropping"])
+app.include_router(advisory_risk_router, prefix="/api", tags=["Advisory & Risk"])
 
 
 @app.get("/")

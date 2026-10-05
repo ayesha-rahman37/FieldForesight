@@ -16,11 +16,11 @@ def save_preference(user_id:int,crop:str,region:str,db:Session) -> bool:
     db.commit()
     return True
 
-def get_user_references(user_id,db:Session):
+def get_user_preferences(user_id, db: Session):
     user = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
 
     if not user:
-        return PreferenceResponse(user_id=user_id,last_crop=None,last_region=None)
+        return PreferenceResponse(user_id=user_id, last_crop=None, last_region=None)
     return PreferenceResponse(
         user_id=user.user_id,
         last_crop=user.last_crop,

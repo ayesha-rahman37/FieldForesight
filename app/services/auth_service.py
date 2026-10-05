@@ -57,3 +57,35 @@ def get_current_user(
         )
 
     return user
+
+
+security_optional = HTTPBearer(auto_error=False)
+
+
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_optional),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if not credentials:
+        return None
+    token = credentials.credentials
+
+    session = (
+        db.query(UserSession)
+        .filter(UserSession.session_token == token)
+        .first()
+    )
+
+    if not session or session.expires_at < datetime.utcnow():
+        return None
+
+    user = (
+        db.query(User)
+        .filter(User.id == session.user_id)
+        .first()
+    )
+
+    if not user or not user.is_active:
+        return None
+
+    return user

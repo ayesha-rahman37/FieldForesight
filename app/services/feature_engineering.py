@@ -12,6 +12,9 @@ def prepare_yield_features(df: pd.DataFrame) -> pd.DataFrame:
         subset=["year", "yield"]
     )
 
+    if data.empty:
+        return data
+
     data["rainfall"] = data["rainfall"].fillna(
         data["rainfall"].median()
         if not data["rainfall"].dropna().empty
