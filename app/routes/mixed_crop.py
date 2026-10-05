@@ -26,7 +26,7 @@ def save_mixed_crop(payload: MixedCropRequest, db: Session = Depends(get_db)):
     saved = []
 
     for item in payload.crops:
-        crop_obj = db.query(Crop).filter(Crop.name == item.crop).first()
+        crop_obj = db.query(Crop).filter(Crop.name.ilike(item.crop.strip())).first()
         if not crop_obj:
             raise HTTPException(status_code=404, detail=f"Crop '{item.crop}' পাওয়া যায়নি।")
 
@@ -37,7 +37,7 @@ def save_mixed_crop(payload: MixedCropRequest, db: Session = Depends(get_db)):
             relation_type=payload.relation_type,
         )
         db.add(mapping)
-        saved.append(item.crop)
+        saved.append(crop_obj.name)
 
     db.commit()
     return {"message": f"{len(saved)}টা crop mixed-cropping হিসেবে save হয়েছে।", "crops": saved}
@@ -54,7 +54,7 @@ def get_mixed_crop(farm_id: str, db: Session = Depends(get_db)):
 
     return [
         {
-            "crop": m.crop.name,
+            "crop": m.crop.name if m.crop else "Unknown",
             "sequence_order": m.sequence_order,
             "relation_type": m.relation_type,
         }

@@ -76,6 +76,8 @@ def fetch_ndvi_for_region(region: str) -> float:
     denom[denom == 0] = 1e-6
     ndvi = (nir - red) / denom
     avg_ndvi = float(np.nanmean(ndvi))
+    if np.isnan(avg_ndvi):
+        return 0.0
 
     save_raw_bands(red, nir, bbox_coords, region)
 

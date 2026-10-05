@@ -1,5 +1,5 @@
 import os
-
+from datetime import datetime, timedelta
 import joblib
 from sqlalchemy.orm import Session
 
@@ -9,14 +9,6 @@ from app.services.adjustment_rules import apply_adjustments
 from app.services.regional_fallback import (
     FALLBACK_MODEL_VERSION,
     get_fallback_prediction,
-)
-
-
-MODEL_DIR = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "data",
-    "models",
 )
 
 
@@ -45,7 +37,6 @@ def get_prediction(
     cropping_type: str = "single",
     db: Session | None = None,
 ):
-
     if db is None:
         raise ValueError(
             "Database session is required for prediction."
@@ -64,6 +55,7 @@ def get_prediction(
     # use the documented regionalized fallback model.
     if metadata is None:
 
+        ttl_cutoff = datetime.utcnow() - timedelta(days=1)
         cached = (
             db.query(ForecastCache)
             .filter(
@@ -71,8 +63,8 @@ def get_prediction(
                 ForecastCache.region == region,
                 ForecastCache.variety == variety,
                 ForecastCache.cropping_type == cropping_type,
-                ForecastCache.model_version
-                == FALLBACK_MODEL_VERSION,
+                ForecastCache.model_version == FALLBACK_MODEL_VERSION,
+                ForecastCache.created_at >= ttl_cutoff,
             )
             .order_by(
                 ForecastCache.created_at.desc()
@@ -121,6 +113,7 @@ def get_prediction(
     # LOCAL MODEL PATH
     # ---------------------------------------------------------
 
+    ttl_cutoff = datetime.utcnow() - timedelta(days=1)
     cached = (
         db.query(ForecastCache)
         .filter(
@@ -128,8 +121,8 @@ def get_prediction(
             ForecastCache.region == region,
             ForecastCache.variety == variety,
             ForecastCache.cropping_type == cropping_type,
-            ForecastCache.model_version
-            == metadata.model_version,
+            ForecastCache.model_version == metadata.model_version,
+            ForecastCache.created_at >= ttl_cutoff,
         )
         .order_by(
             ForecastCache.created_at.desc()
@@ -151,49 +144,55 @@ def get_prediction(
             "cache_hit": True,
         }
 
-    model_path = os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "..",
-        metadata.model_path,
-    )
-
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     model_path = os.path.normpath(
-        model_path
+        os.path.join(repo_root, metadata.model_path.lstrip("/\\"))
     )
 
     if not os.path.exists(model_path):
-
-        raise FileNotFoundError(
-            f"Model file not found: {model_path}"
+        return get_fallback_prediction(
+            crop=crop,
+            region=region,
+            variety=variety,
+            cropping_type=cropping_type,
         )
 
-    model = joblib.load(
-        model_path
-    )
+    try:
+        model = joblib.load(
+            model_path
+        )
 
-    future = model.make_future_dataframe(
-        periods=1,
-        freq="YS",
-    )
+        future = model.make_future_dataframe(
+            periods=1,
+            freq="YS",
+        )
 
-    forecast = model.predict(
-        future
-    )
+        forecast = model.predict(
+            future
+        )
 
-    latest = forecast.iloc[-1]
+        latest = forecast.iloc[-1]
 
-    base_yield = float(
-        latest["yhat"]
-    )
+        base_yield = float(
+            latest["yhat"]
+        )
 
-    lower = float(
-        latest["yhat_lower"]
-    )
+        lower = float(
+            latest["yhat_lower"]
+        )
+    except Exception as exc:
+        print(f"Failed to load local Prophet model ({exc}), falling back to regional model.")
+        return get_fallback_prediction(
+            crop=crop,
+            region=region,
+            variety=variety,
+            cropping_type=cropping_type,
+        )
 
     upper = float(
         latest["yhat_upper"]
     )
+
 
     adjusted_yield = apply_adjustments(
         base_yield,

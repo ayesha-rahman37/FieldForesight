@@ -21,13 +21,13 @@ def get_historical_data(
 ):
     crop_obj = (
         db.query(Crop)
-        .filter(Crop.name == crop)
+        .filter(Crop.name.ilike(crop.strip()))
         .first()
     )
 
     region_obj = (
         db.query(Region)
-        .filter(Region.name == region)
+        .filter(Region.name.ilike(region.strip()))
         .first()
     )
 

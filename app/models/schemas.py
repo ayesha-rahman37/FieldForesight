@@ -9,6 +9,7 @@ class PredictionRequest(BaseModel):
 
 
 class PredictionResponse(BaseModel):
+    prediction_id: int
     predicted_yield: float
     lower_bound: float
     upper_bound: float
