@@ -5,6 +5,8 @@ from fastapi import FastAPI
 from app.database import Base, engine
 from app.models.user_preference import UserPreference
 from app.models.user import User
+from app.models.forecast_cache import ForecastCache
+from app.models.model_metadata import ModelMetadata
 from app.models.role import Role
 from app.models.session import UserSession
 from app.routes.community import router as community_router
