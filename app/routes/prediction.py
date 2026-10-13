@@ -22,8 +22,10 @@ def predict_yield(
         data.crop,
         data.region,
         data.variety,
-        data.cropping_type
+        data.cropping_type,
+        db=db,
     )
+
 
     history = PredictionHistory(
         user_id=current_user.id,
