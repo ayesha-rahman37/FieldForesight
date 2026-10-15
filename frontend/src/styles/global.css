@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-200: #b1eed3;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-800: #065f46;
+  --color-brand-900: #022c22;
+  --color-brand-950: #011914;
+
+  --color-surface-cream: #F9FAF7;
+  --color-surface-light: #F4F5F0;
+
+  --color-forest-50: #ecfdf5;
+  --color-forest-100: #d1fae5;
+  --color-forest-200: #a7f3d0;
+  --color-forest-300: #6ee7b7;
+  --color-forest-400: #34d399;
+  --color-forest-500: #10b981;
+  --color-forest-600: #0d7a6e;
+  --color-forest-700: #055c52;
+  --color-forest-800: #00473F;
+  --color-forest-850: #043832;
+  --color-forest-900: #022c22;
+  --color-forest-950: #011914;
+
+  --color-warm-50: #FBF9F5;
+  --color-warm-100: #F4F1EA;
+  --color-warm-200: #E8E3D7;
+  --color-warm-300: #D5CDBF;
+}
+
+:root {
+  --primary: #004741;
+  --bg-sand: #F0EDE4;
+  --card-bg: #FFFFFF;
+  --text-dark: #004741;
+  --text-light: #F0EDE4;
+  --alert-red: #B33A3A;
+  --alert-red-bg: #FDF2F2;
+  --success-green: #4A8B7C;
+  --success-green-bg: #E8F4F1;
+  --border-color: #D8D3C5;
+  --muted-text: #5A6E69;
+  --muted-bg: #E5E1D5;
+  
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-sand);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select {
+  font-family: 'Inter', 'Noto Sans Bengali', sans-serif;
+}
+
+.max-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Interactive Hover States */
+.interactive-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: var(--radius-md);
+}
+
+.interactive-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 71, 65, 0.12);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #E5E1D5 25%, #F0EDE4 50%, #E5E1D5 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
