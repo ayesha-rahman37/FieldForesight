@@ -29,7 +29,7 @@ def fetch_weather_data(lat: float, lon: float, start_year: int, end_year: int):
         "format": "JSON"
     }
 
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=30)
     response.raise_for_status()
     data = response.json()
 
