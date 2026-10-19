@@ -1,33 +1,48 @@
 import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
-import { AlertTriangle, Lightbulb } from 'lucide-react';
+import { Lightbulb, Sparkles, ShieldAlert } from 'lucide-react';
 import api from '../../api/client';
+import { RiskLevelBadge, type RiskLevel } from '../advisory/RiskLevelBadge';
+import { WarningCards, type RiskAlertItem } from '../advisory/WarningCards';
+import { BanglaAdvisorySection } from '../advisory/BanglaAdvisorySection';
 
 interface AdvisoryRisksCardProps {
   crop: string;
   region: string;
   yieldVal: number;
-}
-
-interface RiskAlert {
-  id: string;
-  level: 'high' | 'medium' | 'low';
-  title: string;
-  description: string;
+  variety?: string;
+  predictionId?: number | null;
+  lowerBound?: number;
+  upperBound?: number;
 }
 
 interface AdvisoryResponse {
+  id?: number;
+  crop: string;
+  region: string;
+  variety: string;
+  predicted_yield: number;
+  risk_level: RiskLevel;
+  risk_score: number;
   advisory_text: string;
   action_items: string[];
+  precaution_alert?: string;
+  warning_alerts?: RiskAlertItem[];
+  llm_provider: string;
+  llm_model?: string;
 }
 
 export const AdvisoryRisksCard: React.FC<AdvisoryRisksCardProps> = ({
   crop,
   region,
   yieldVal,
+  variety = 'HYV',
+  predictionId,
+  lowerBound,
+  upperBound,
 }) => {
   const { t } = useLanguage();
-  const [alerts, setAlerts] = useState<RiskAlert[]>([]);
+  const [activeTab, setActiveTab] = useState<'advisory' | 'warnings'>('advisory');
   const [advisory, setAdvisory] = useState<AdvisoryResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
@@ -36,15 +51,32 @@ export const AdvisoryRisksCard: React.FC<AdvisoryRisksCardProps> = ({
     setLoading(true);
     setError(false);
     try {
-      const [alertRes, advRes] = await Promise.allSettled([
-        api.get<RiskAlert[]>('/api/risk/alerts', { params: { crop, region } }),
-        api.get<AdvisoryResponse>('/api/advisory/generate', { params: { crop, region, yield: yieldVal } }),
-      ]);
-
-      if (alertRes.status === 'fulfilled') setAlerts(alertRes.value.data);
-      if (advRes.status === 'fulfilled') setAdvisory(advRes.value.data);
+      const res = await api.post<AdvisoryResponse>('/api/advisory/generate', {
+        crop,
+        region,
+        variety,
+        predicted_yield: yieldVal,
+        lower_bound: lowerBound,
+        upper_bound: upperBound,
+        prediction_id: predictionId || undefined,
+      });
+      setAdvisory(res.data);
     } catch {
-      setError(true);
+      // Fallback GET
+      try {
+        const getRes = await api.get<AdvisoryResponse>('/api/advisory/generate', {
+          params: {
+            crop,
+            region,
+            variety,
+            yield: yieldVal,
+            prediction_id: predictionId || undefined,
+          },
+        });
+        setAdvisory(getRes.data);
+      } catch {
+        setError(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -52,72 +84,111 @@ export const AdvisoryRisksCard: React.FC<AdvisoryRisksCardProps> = ({
 
   useEffect(() => {
     loadData();
-  }, [crop, region, yieldVal]);
-
-  const primaryAlert = alerts[0] || {
-    title: t('কীটপতঙ্গ সতর্কতা', 'PEST ALERT'),
-    description: t(
-      'পার্শ্ববর্তী জেলাগুলিতে হালকা মরিচা রোগের ঝুঁকি দেখা গেছে। প্রতিদিন ফসলের পাতা পর্যবেক্ষণ করুন।',
-      'Mild rust risk detected in adjacent districts. Monitor crop leaves daily.'
-    ),
-  };
-
-  const guidanceText = advisory?.advisory_text || t(
-    'পরবর্তী ৭২ ঘণ্টার মধ্যে জমিতে সার দেওয়ার সেরা সময় শুরু হচ্ছে।',
-    'Top-dressing fertilizer window begins within the next 72 hours.'
-  );
+  }, [crop, region, yieldVal, variety, predictionId]);
 
   return (
     <div className="bg-[#FBFAF6] border border-[#E5E1D6] rounded-2xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col justify-between h-full space-y-4">
       <div>
-        {/* Header */}
-        <div className="flex items-center gap-1.5 mb-4">
-          <span className="text-amber-700 text-xs font-bold">⚠</span>
-          <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-[#4A4A44]">
-            {t('পরামর্শ ও ঝুঁকি', 'ADVISORY & RISKS')}
-          </h3>
+        {/* Header with Risk Level Badge */}
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <div className="flex items-center gap-1.5">
+            <span className="text-amber-700 text-xs font-bold">⚠</span>
+            <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-[#4A4A44]">
+              {t('ঝুঁকি মূল্যায়ন ও বাংলা পরামর্শ', 'RISK EVALUATION & ADVISORY')}
+            </h3>
+          </div>
+
+          {advisory && (
+            <RiskLevelBadge
+              level={advisory.risk_level}
+              score={advisory.risk_score}
+              size="sm"
+            />
+          )}
         </div>
 
+        {/* View Switcher Tabs */}
+        <div className="flex rounded-xl bg-[#EFECE3] p-1 mb-4 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setActiveTab('advisory')}
+            className={`flex-1 py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'advisory'
+                ? 'bg-white text-[#004741] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Lightbulb className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{t('কৃষি পরামর্শ (AI Advisory)', 'AI Advisory')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('warnings')}
+            className={`flex-1 py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'warnings'
+                ? 'bg-white text-[#004741] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+            <span>
+              {t('সতর্কতা কার্ড', 'Warning Cards')}
+              {advisory?.warning_alerts && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-900 font-bold">
+                  {advisory.warning_alerts.length}
+                </span>
+              )}
+            </span>
+          </button>
+        </div>
+
+        {/* Tab Content */}
         {loading ? (
           <div className="space-y-3 animate-pulse">
-            <div className="h-16 bg-[#F8E9E4] rounded-xl" />
-            <div className="h-16 bg-[#E6EFE6] rounded-xl" />
+            <div className="h-20 bg-slate-100 rounded-xl" />
+            <div className="h-20 bg-slate-100 rounded-xl" />
           </div>
         ) : error ? (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs flex items-center justify-between">
-            <span className="text-red-700">{t('পরামর্শ লোড করতে ত্রুটি', 'Failed to load advisory')}</span>
+          <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-xs flex items-center justify-between">
+            <span className="text-red-700">
+              {t('পরামর্শ ও ঝুঁকি উপাত্ত লোড করতে ত্রুটি।', 'Failed to load advisory data.')}
+            </span>
             <button
               onClick={loadData}
-              className="px-2 py-0.5 bg-red-600 text-white rounded text-[11px] font-semibold"
+              className="px-2.5 py-1 bg-red-600 text-white rounded-lg text-[11px] font-semibold"
             >
               {t('পুনরায় চেষ্টা', 'Retry')}
             </button>
           </div>
+        ) : activeTab === 'advisory' ? (
+          <BanglaAdvisorySection
+            crop={crop}
+            region={region}
+            yieldVal={yieldVal}
+            variety={variety}
+            predictionId={predictionId}
+          />
         ) : (
-          <div className="space-y-3">
-            {/* Pest Alert Card */}
-            <div className="bg-[#F8E9E4] border border-[#F3C7BE] border-l-4 border-l-[#C62828] rounded-xl p-3.5 space-y-1">
-              <div className="flex items-center gap-1.5 text-[#C62828] text-[11px] font-bold uppercase">
-                <AlertTriangle className="w-3.5 h-3.5 text-[#C62828]" />
-                <span>{primaryAlert.title}</span>
-              </div>
-              <p className="text-xs text-[#5C2320] leading-snug">
-                {primaryAlert.description}
-              </p>
-            </div>
-
-            {/* Field Guidance Card */}
-            <div className="bg-[#E6EFE6] border border-[#C5DCBF] border-l-4 border-l-[#0B5D45] rounded-xl p-3.5 space-y-1">
-              <div className="flex items-center gap-1.5 text-[#0B5D45] text-[11px] font-bold uppercase">
-                <Lightbulb className="w-3.5 h-3.5 text-[#0B5D45]" />
-                <span>{t('মাঠের নির্দেশিকা', 'FIELD GUIDANCE')}</span>
-              </div>
-              <p className="text-xs text-[#1E4337] leading-snug">
-                {guidanceText}
-              </p>
-            </div>
-          </div>
+          <WarningCards
+            crop={crop}
+            region={region}
+            variety={variety}
+            yieldVal={yieldVal}
+            initialAlerts={advisory?.warning_alerts}
+          />
         )}
+      </div>
+
+      {/* Footer Info */}
+      <div className="pt-2 border-t border-[#E5E1D6]/70 flex items-center justify-between text-[11px] text-slate-500">
+        <span className="flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-emerald-600" />
+          <span>{advisory?.llm_provider === 'groq' ? 'Groq Llama-3.3-70B' : 'BARC Rules'}</span>
+        </span>
+        <span>
+          {t('মডেল রেজাল্ট ভিত্তিক ক্যালিব্রেটেড', 'Calibrated on prediction output')}
+        </span>
       </div>
     </div>
   );
