@@ -21,6 +21,7 @@ from app.routes import history
 from app.routes import auth
 from app.routes import admin
 from app.routes import data_sources
+from app.routes import environmental_data
 Base.metadata.create_all(bind=engine)
 from app.routes import crops, regions  # prediction আপাতত বাদ
 app = FastAPI(title="FieldForesight API", version="1.0")
@@ -49,6 +50,11 @@ app.include_router(
     data_sources.router,
     prefix="/api/data-sources",
     tags=["Data Sources"],
+)
+app.include_router(
+    environmental_data.router,
+    prefix="/api/environmental-data",
+    tags=["Environmental Data"],
 )
 
 @app.get("/")
