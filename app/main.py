@@ -20,6 +20,9 @@ from app.models.region import Region
 from app.models.mixed_cropping import MixedCroppingMapping
 from app.models.prediction_history import PredictionHistory
 
+from app.models.risk_threshold import RiskThreshold
+from app.models.advisory_history import AdvisoryHistory
+from app.models.crop_variety import CropVariety
 from app.routes.community import router as community_router
 from app.routes.data_ownership import router as data_ownership_router
 from app.routes.explainability import router as explainability_router
@@ -33,8 +36,14 @@ from app.routes import historical_data
 from app.routes import mixed_crop
 from app.routes import crops, regions
 from app.routes.advisory_risk import router as advisory_risk_router
+from app.routes.varieties import router as varieties_router
+from app.scripts.seed_samir_data import seed_samir_data
 
 Base.metadata.create_all(bind=engine)
+try:
+    seed_samir_data()
+except Exception as _e:
+    pass
 
 app = FastAPI(title="FieldForesight API", version="1.0")
 
@@ -80,6 +89,7 @@ app.include_router(regions.router, prefix="/api", tags=["Regions"])
 app.include_router(historical_data.router, prefix="/api", tags=["Historical Data"])
 app.include_router(mixed_crop.router, prefix="/api", tags=["Mixed Cropping"])
 app.include_router(advisory_risk_router, prefix="/api", tags=["Advisory & Risk"])
+app.include_router(varieties_router, prefix="/api", tags=["Varieties"])
 
 
 @app.get("/")

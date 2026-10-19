@@ -26,7 +26,7 @@ interface DashboardPageProps {
   initialRegion?: string;
 }
 
-type VarietyApi = 'HYV' | 'Local';
+type VarietyApi = string;
 
 interface PredictionData {
   prediction_id: number;
@@ -55,7 +55,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ initialCrop = '', 
 
   const [selectedCrop, setSelectedCrop] = useState(initialCrop);
   const [selectedRegion, setSelectedRegion] = useState(initialRegion);
-  const [selectedVariety, setSelectedVariety] = useState<VarietyApi>('HYV');
+  const [selectedVariety, setSelectedVariety] = useState<string>('HYV');
 
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [predictionId, setPredictionId] = useState<number | null>(null);
@@ -334,6 +334,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ initialCrop = '', 
               crop={selectedCrop}
               region={selectedRegion}
               yieldVal={prediction.predicted_yield}
+              variety={selectedVariety}
+              predictionId={predictionId}
+              lowerBound={prediction.lower_bound}
+              upperBound={prediction.upper_bound}
             />
           </div>
         </div>
