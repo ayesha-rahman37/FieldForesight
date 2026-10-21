@@ -1,4 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+)
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import secrets
@@ -111,3 +116,31 @@ def login_user(data: LoginRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_my_profile(current_user: User = Depends(get_current_user)):
     return current_user
+logout_security = HTTPBearer()
+
+
+@router.post("/logout")
+def logout_user(
+    credentials: HTTPAuthorizationCredentials = Depends(logout_security),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = (
+        db.query(UserSession)
+        .filter(
+            UserSession.session_token == credentials.credentials,
+            UserSession.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if session is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Session not found",
+        )
+
+    db.delete(session)
+    db.commit()
+
+    return {"message": "Logged out successfully"}

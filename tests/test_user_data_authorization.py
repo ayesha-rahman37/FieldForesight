@@ -109,6 +109,43 @@ class TestUserDataAuthorization(unittest.TestCase):
         response = self.client.get("/api/data-ownership/my_data")
         self.assertEqual(response.status_code, 401)
 
+
+    def test_logout_deletes_current_server_session(self):
+        response = self.client.post(
+            "/api/auth/logout",
+            headers={"Authorization": "Bearer test-token-1"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["message"],
+            "Logged out successfully",
+        )
+        self.assertIsNone(
+            self.db.query(UserSession)
+            .filter_by(session_token="test-token-1")
+            .first()
+        )
+
+        # The revoked token must no longer authenticate requests.
+        protected_response = self.client.get(
+            "/api/data-ownership/my_data",
+            headers={"Authorization": "Bearer test-token-1"},
+        )
+        self.assertEqual(protected_response.status_code, 401)
+
+        # Logging out one user must not revoke another user's session.
+        other_response = self.client.get(
+            "/api/data-ownership/my_data",
+            headers={"Authorization": "Bearer test-token-2"},
+        )
+        self.assertEqual(other_response.status_code, 200)
+
+    def test_logout_requires_authentication(self):
+        response = self.client.post("/api/auth/logout")
+        self.assertEqual(response.status_code, 401)
+
+
     def test_my_data_returns_authenticated_user(self):
         response = self.client.get(
             "/api/data-ownership/my_data",

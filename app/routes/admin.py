@@ -17,16 +17,24 @@ def get_all_users(
 ):
     users = db.query(User).all()
 
+    roles = {
+        role.id: role.name
+        for role in db.query(Role).all()
+    }
+
     return [
         {
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "role_id": user.role_id,
+            "role_name": roles.get(user.role_id, "unknown"),
             "is_active": user.is_active,
         }
         for user in users
     ]
+
+
 
 
 @router.patch("/users/{user_id}/status")

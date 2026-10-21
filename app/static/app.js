@@ -328,9 +328,28 @@ async function loadProfile() {
 }
 
 if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-        showLogin();
-        showAuthMessage("You have been logged out.");
+    logoutBtn.addEventListener("click", async () => {
+        const token = accessToken;
+
+        try {
+            if (token) {
+                const response = await fetch("/api/auth/logout", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok && response.status !== 401) {
+                    throw new Error("Logout failed. Please try again.");
+                }
+            }
+
+            showLogin();
+            showAuthMessage("You have been logged out.");
+        } catch (error) {
+            showAuthMessage(error.message, true);
+        }
     });
 }
 const adminSection = document.getElementById("adminSection");
@@ -338,37 +357,43 @@ const adminUsersBody = document.getElementById("adminUsersBody");
 const adminMessage = document.getElementById("adminMessage");
 const refreshUsersBtn = document.getElementById("refreshUsersBtn");
 
+
 async function checkAdminAccess() {
-    if (!accessToken || !adminSection) return;
+    if (!adminSection) return;
+
+    adminSection.classList.add("d-none");
+
+    if (!accessToken) return;
 
     try {
-        const response = await fetch("/api/auth/me", {
+        const response = await fetch("/api/admin/users", {
             headers: {
                 Authorization: `Bearer ${accessToken}`
             }
         });
 
-        if (!response.ok) {
-            adminSection.classList.add("d-none");
+        if (response.status === 401 || response.status === 403) {
             return;
         }
 
-        const user = await response.json();
+        if (!response.ok) {
+            throw new Error("Could not verify admin access.");
+        }
 
-        // Adjust if your UserResponse exposes the role differently.
-        
-if (user.role_id === 2) {
-    adminSection.classList.remove("d-none");
-    await loadAdminUsers();
-} else {
-    adminSection.classList.add("d-none");
-}
+        const users = await response.json();
 
+        if (!Array.isArray(users)) {
+            throw new Error("Unexpected admin response.");
+        }
+
+        adminSection.classList.remove("d-none");
+        await loadAdminUsers();
     } catch (error) {
         adminSection.classList.add("d-none");
         console.error("Could not check admin access:", error);
     }
 }
+
 
 async function loadAdminUsers() {
     if (!accessToken || !adminUsersBody || !adminMessage) return;
@@ -401,7 +426,7 @@ async function loadAdminUsers() {
         data.forEach(user => {
             const row = document.createElement("tr");
 
-            [user.username, user.email, user.role_id,
+            [user.username, user.email, user.role_name,
              user.is_active ? "Active" : "Inactive"].forEach(value => {
                 const cell = document.createElement("td");
                 cell.textContent = value ?? "—";
@@ -430,7 +455,7 @@ async function loadAdminUsers() {
                 roleSelect.add(option);
             });
 
-            roleSelect.value = user.role_id === 2 ? "admin" : "farmer";
+            roleSelect.value = user.role_name === "admin" ? "admin" : "farmer";
 
             const roleButton = document.createElement("button");
             roleButton.type = "button";
