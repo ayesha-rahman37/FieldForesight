@@ -110,6 +110,55 @@
         </header>
 
 
+        <section id="dataSourceStatus" class="card info-card mb-4" aria-live="polite">
+            <div class="card-heading">
+                <div>
+                    <p class="section-label">SYSTEM MONITORING</p>
+                    <h2>Data Source Status</h2>
+                </div>
+                <button type="button" id="refreshDataSourceStatus"
+                        class="btn btn-outline-primary btn-sm">
+                    Refresh
+                </button>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="border rounded p-3 h-100">
+                        <h3>Weather</h3>
+                        <p id="weatherSourceStatus">Checking...</p>
+                        <small id="weatherSourceDetails">
+                            Checking NASA POWER connectivity.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="border rounded p-3 h-100">
+                        <h3>Soil</h3>
+                        <p id="soilSourceStatus">Checking...</p>
+                        <small id="soilSourceDetails">
+                            Checking soil-data integration.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="border rounded p-3 h-100">
+                        <h3>Satellite</h3>
+                        <p id="satelliteSourceStatus">Checking...</p>
+                        <small id="satelliteSourceDetails">
+                            Checking cached NDVI data.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <p class="mt-3 mb-0">
+                <small id="dataSourceCheckedAt">Status has not been checked yet.</small>
+            </p>
+        </section>
+
         <section id="prediction" class="prediction-layout">
 
             <div class="card prediction-form-card">

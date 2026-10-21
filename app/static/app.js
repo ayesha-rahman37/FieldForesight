@@ -29,12 +29,100 @@ function showAuthMessage(message, isError = false) {
         : "mt-3 text-success";
 }
 
+
+async function loadDataSourceStatus() {
+    const weatherStatus = document.getElementById("weatherSourceStatus");
+    const weatherDetails = document.getElementById("weatherSourceDetails");
+    const soilStatus = document.getElementById("soilSourceStatus");
+    const soilDetails = document.getElementById("soilSourceDetails");
+    const satelliteStatus = document.getElementById("satelliteSourceStatus");
+    const satelliteDetails = document.getElementById("satelliteSourceDetails");
+    const checkedAt = document.getElementById("dataSourceCheckedAt");
+
+    try {
+        checkedAt.textContent = "Checking data sources...";
+
+        const response = await fetch("/api/data-sources/status");
+
+        if (!response.ok) {
+            throw new Error("Status request failed (" + response.status + ").");
+        }
+
+        const data = await response.json();
+
+        // Weather
+        weatherStatus.textContent =
+            data.weather.status === "available" ? "Available" : "Unavailable";
+
+        weatherDetails.textContent =
+            data.weather.provider +
+            (data.weather.message ? " — " + data.weather.message : "");
+
+        // Soil
+        soilStatus.textContent =
+            data.soil.status === "available" ? "Available" : "Not configured";
+
+        soilDetails.textContent =
+            data.soil.message || data.soil.provider || "Soil data is unavailable.";
+
+        // Satellite
+        const satelliteLabels = {
+            cached_data_available: "Cached NDVI available",
+            configured_no_cached_data: "Configured, no cached data",
+            not_configured: "Not configured"
+        };
+
+        satelliteStatus.textContent =
+            satelliteLabels[data.satellite.status] || "Status unknown";
+
+        const satelliteInfo = [
+            data.satellite.provider || "Satellite provider unknown",
+            "Regions with NDVI: " + (data.satellite.regions_with_ndvi || 0)
+        ];
+
+        if (data.satellite.latest_computed_at) {
+            satelliteInfo.push(
+                "Latest NDVI: " +
+                new Date(data.satellite.latest_computed_at).toLocaleString()
+            );
+        }
+
+        if (data.satellite.live_connection_checked === false) {
+            satelliteInfo.push("Live connection not checked");
+        }
+
+        satelliteDetails.textContent = satelliteInfo.join(" · ");
+
+        checkedAt.textContent = data.checked_at
+            ? "Last checked: " + new Date(data.checked_at).toLocaleString()
+            : "Status check completed.";
+
+    } catch (error) {
+        weatherStatus.textContent = "Check failed";
+        soilStatus.textContent = "Status unavailable";
+        satelliteStatus.textContent = "Status unavailable";
+
+        weatherDetails.textContent = error.message;
+        soilDetails.textContent = "Could not retrieve data-source status.";
+        satelliteDetails.textContent = "Could not retrieve data-source status.";
+
+        checkedAt.textContent = "Could not check data sources. Please try again.";
+    }
+}
+
+document.getElementById("refreshDataSourceStatus").addEventListener(
+    "click",
+    loadDataSourceStatus
+);
+
+
 function showDashboard() {
     authScreen.classList.add("d-none");
     dashboardScreen.classList.remove("d-none");
     loadHistory();
     loadProfile();
     checkAdminAccess();
+    loadDataSourceStatus();
 }
 function showLogin() {
     accessToken = null;
