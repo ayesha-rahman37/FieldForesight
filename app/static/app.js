@@ -121,6 +121,7 @@ function showDashboard() {
     dashboardScreen.classList.remove("d-none");
     loadHistory();
     loadProfile();
+    loadMyData();
     checkAdminAccess();
     loadDataSourceStatus();
 }
@@ -440,6 +441,113 @@ if (logoutBtn) {
         }
     });
 }
+
+const myDataMessage = document.getElementById("myDataMessage");
+const refreshMyDataBtn = document.getElementById("refreshMyDataBtn");
+const deleteMyHistoryBtn = document.getElementById("deleteMyHistoryBtn");
+const deletePreferencesBtn = document.getElementById("deletePreferencesBtn");
+
+async function loadMyData() {
+    if (!accessToken || !myDataMessage) return;
+
+    myDataMessage.textContent = "Loading your data...";
+
+    try {
+        const response = await fetch("/api/data-ownership/my_data", {
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            showLogin();
+            showAuthMessage("Your session has expired. Please log in again.", true);
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Could not load your data.");
+        }
+
+        document.getElementById("myDataUsername").textContent =
+            data.profile?.username || "—";
+        document.getElementById("myDataEmail").textContent =
+            data.profile?.email || "—";
+        document.getElementById("myDataCrop").textContent =
+            data.saved_preference?.last_crop || "None";
+        document.getElementById("myDataRegion").textContent =
+            data.saved_preference?.last_region || "None";
+
+        myDataMessage.textContent =
+            `${data.prediction_history?.length || 0} saved prediction(s) found.`;
+    } catch (error) {
+        myDataMessage.textContent = error.message;
+    }
+}
+
+async function deleteMyData(dataType) {
+    const label = dataType === "prediction_history"
+        ? "your prediction history"
+        : "your saved preferences";
+
+    if (!accessToken || !confirm(`Are you sure you want to delete ${label}? This cannot be undone.`)) {
+        return;
+    }
+
+    myDataMessage.textContent = "Deleting...";
+
+    try {
+        const response = await fetch("/api/data-ownership/delete", {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({ data_type: dataType })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.status === 401 || response.status === 403) {
+            showLogin();
+            showAuthMessage("Your session has expired. Please log in again.", true);
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Could not delete your data.");
+        }
+
+        myDataMessage.textContent = data.message || "Your data was deleted.";
+
+        await loadMyData();
+
+        if (dataType === "prediction_history") {
+            await loadHistory();
+        }
+    } catch (error) {
+        myDataMessage.textContent = error.message;
+    }
+}
+
+if (refreshMyDataBtn) {
+    refreshMyDataBtn.addEventListener("click", loadMyData);
+}
+
+if (deleteMyHistoryBtn) {
+    deleteMyHistoryBtn.addEventListener("click", () =>
+        deleteMyData("prediction_history")
+    );
+}
+
+if (deletePreferencesBtn) {
+    deletePreferencesBtn.addEventListener("click", () =>
+        deleteMyData("preferences")
+    );
+}
+
 const adminSection = document.getElementById("adminSection");
 const adminUsersBody = document.getElementById("adminUsersBody");
 const adminMessage = document.getElementById("adminMessage");

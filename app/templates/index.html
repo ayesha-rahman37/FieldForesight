@@ -294,6 +294,41 @@
         </table>
     </div>
 </section>
+
+<section id="myDataSection" class="card info-card">
+    <div class="card-heading">
+        <div>
+            <p class="section-label">PRIVACY & OWNERSHIP</p>
+            <h2>My Data</h2>
+            <p class="subtitle">View and manage data associated with your account.</p>
+        </div>
+        <button type="button" id="refreshMyDataBtn" class="btn btn-outline-success">
+            Refresh My Data
+        </button>
+    </div>
+
+    <div id="myDataMessage" class="mt-3" role="status">
+        Log in to view your data.
+    </div>
+
+    <h3 class="mt-4">Profile</h3>
+    <p>Username: <strong id="myDataUsername">—</strong></p>
+    <p>Email: <strong id="myDataEmail">—</strong></p>
+
+    <h3 class="mt-4">Saved Preferences</h3>
+    <p>Last crop: <strong id="myDataCrop">—</strong></p>
+    <p>Last region: <strong id="myDataRegion">—</strong></p>
+    <button type="button" id="deletePreferencesBtn" class="btn btn-outline-danger">
+        Delete My Saved Preferences
+    </button>
+
+    <h3 class="mt-4">Prediction History</h3>
+    <p>Delete your saved prediction records without affecting other users.</p>
+    <button type="button" id="deleteMyHistoryBtn" class="btn btn-outline-danger">
+        Delete My Prediction History
+    </button>
+</section>
+
 <section id="adminSection" class="card info-card d-none">
     <div class="card-heading">
         <div>
