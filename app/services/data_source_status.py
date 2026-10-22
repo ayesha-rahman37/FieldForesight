@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.models.ndvi_cache import NDVICache
+from app.models.soil_cache import SoilCache
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT_DIR / ".env")
@@ -82,6 +83,19 @@ def get_data_source_status(db: Session) -> dict:
         .scalar()
     )
 
+    soil_count = (
+        db.query(func.count(SoilCache.id))
+        .filter(SoilCache.status == "available")
+        .scalar()
+        or 0
+    )
+
+    latest_soil = (
+        db.query(func.max(SoilCache.fetched_at))
+        .filter(SoilCache.status == "available")
+        .scalar()
+    )
+
     satellite_configured = bool(
         os.getenv("SENTINELHUB_CLIENT_ID")
         and os.getenv("SENTINELHUB_CLIENT_SECRET")
@@ -90,9 +104,17 @@ def get_data_source_status(db: Session) -> dict:
     return {
         "weather": check_weather_api(),
         "soil": {
-            "status": "unavailable",
-            "provider": None,
-            "message": "No soil-data integration is configured.",
+            "status": (
+                "cached_data_available"
+                if soil_count
+                else "configured_no_cached_data"
+            ),
+            "provider": "SoilGrids",
+            "regions_with_soil_data": soil_count,
+            "latest_fetched_at": (
+                latest_soil.isoformat() if latest_soil else None
+            ),
+            "live_connection_checked": False,
         },
         "satellite": {
             "status": (

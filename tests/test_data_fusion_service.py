@@ -17,6 +17,8 @@ class TestDataFusionService(unittest.TestCase):
         self.assertEqual(result["region"], "InvalidDistrict")
         self.assertEqual(result["weather"]["status"], "unavailable")
         self.assertEqual(result["satellite"]["status"], "unavailable")
+        self.assertEqual(result["satellite"]["status"], "unavailable")
+        self.assertEqual(result["soil"]["status"], "unavailable")
 
     @patch("app.services.data_fusion_service.fetch_ndvi_for_region")
     @patch("app.services.data_fusion_service.fetch_weather_data")
@@ -59,6 +61,38 @@ class TestDataFusionService(unittest.TestCase):
         self.assertEqual(
             result["satellite"]["vegetation_status"], "Moderate"
         )
+
+    @patch("app.services.data_fusion_service.get_soil_data")
+    @patch("app.services.data_fusion_service.fetch_ndvi_for_region")
+    @patch("app.services.data_fusion_service.fetch_weather_data")
+    def test_soil_source_available(
+        self, mock_weather, mock_ndvi, mock_soil
+    ):
+        mock_weather.return_value = pd.DataFrame({
+            "date": pd.to_datetime(["2024-01-01"]),
+            "temperature": [24.0],
+            "rainfall": [5.0],
+        })
+        mock_ndvi.return_value = 0.65
+        mock_soil.return_value = {
+            "status": "available",
+            "provider": "SoilGrids",
+            "ph": 6.5,
+        }
+
+        from unittest.mock import Mock
+
+        db = Mock()
+        result = get_regional_environmental_data(
+            "Dhaka",
+            start_year=2024,
+            end_year=2024,
+            db=db,
+        )
+
+        self.assertEqual(result["soil"]["status"], "available")
+        self.assertEqual(result["soil"]["provider"], "SoilGrids")
+        mock_soil.assert_called_once_with("Dhaka", db)
 
 
 if __name__ == "__main__":
