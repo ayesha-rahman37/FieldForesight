@@ -22,6 +22,7 @@ from app.routes import auth
 from app.routes import admin
 from app.routes import data_sources
 from app.routes import environmental_data
+from app.sqladmin_setup import setup_sqladmin
 Base.metadata.create_all(bind=engine)
 from app.routes import crops, regions  # prediction আপাতত বাদ
 app = FastAPI(title="FieldForesight API", version="1.0")
@@ -56,7 +57,7 @@ app.include_router(
     prefix="/api/environmental-data",
     tags=["Environmental Data"],
 )
-
+setup_sqladmin(app)
 @app.get("/")
 def root():
     return FileResponse(
