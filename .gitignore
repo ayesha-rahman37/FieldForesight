@@ -13,8 +13,9 @@ ENV/
 
 # ===== Environment Variables =====
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+!.env.example
 
 # ===== ML Model & Data Files =====
 *.h5
@@ -58,3 +59,5 @@ logs/
 field_foresight.db
 *.db
 satellite_output/
+app/data/chroma/
+*.pkl

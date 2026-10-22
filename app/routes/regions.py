@@ -1,41 +1,27 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.data.district_coordinates import CANONICAL_DISTRICT_COORDINATES
+from app.database import get_db
+from app.models.region import Region
+from app.scripts.load_data import get_or_create_region
 
 router = APIRouter()
 
-ALL_DISTRICTS = [
-    # Dhaka Division
-    "Dhaka", "Gazipur", "Kishorganj", "Manikganj", "Munshiganj", "Narayanganj", 
-    "Narsingdi", "Tangail", "Faridpur", "Gopalganj", "Madaripur", "Rajbari", "Shariatpur",
-    
-    # Rangpur Division
-    "Rangpur", "Dinajpur", "Gaibandha", "Kurigram", "Lalmonirhat", "Nilphamari", 
-    "Panchagarh", "Thakurgaon",
-    
-    # Rajshahi Division
-    "Rajshahi", "Bogura", "Joypurhat", "Naogaon", "Natore", "Chapainawabganj", 
-    "Pabna", "Sirajganj",
-    
-    # Chattogram Division
-    "Chattogram", "Cox's Bazar", "Bandarban", "Khagrachhari", "Rangamati", "Feni", 
-    "Noakhali", "Lakshmipur", "Cumilla", "Brahmanbaria", "Chandpur",
-    
-    # Khulna Division
-    "Khulna", "Bagerhat", "Satkhira", "Jessore", "Jhenaidah", "Magura", 
-    "Narail", "Kushtia", "Meherpur", "Chuadanga",
-    
-    # Barishal Division
-    "Barishal", "Barguna", "Bhola", "Jhalokathi", "Patuakhali", "Pirojpur",
-    
-    # Sylhet Division
-    "Sylhet", "Moulvibazar", "Habiganj", "Sunamganj",
-    
-    # Mymensingh Division
-    "Mymensingh", "Jamalpur", "Netrokona", "Sherpur"
-]
-
-REGIONS = [{"id": i + 1, "name": district} for i, district in enumerate(ALL_DISTRICTS)]
-
 
 @router.get("/regions")
-def get_regions():
-    return REGIONS
+def get_regions(db: Session = Depends(get_db)):
+    regions = db.query(Region).order_by(Region.id.asc()).all()
+    if len(regions) < len(CANONICAL_DISTRICT_COORDINATES):
+        for district_name in CANONICAL_DISTRICT_COORDINATES:
+            get_or_create_region(db, district_name)
+        db.commit()
+        regions = db.query(Region).order_by(Region.id.asc()).all()
+
+    return [
+        {
+            "id": region.id,
+            "name": region.name,
+        }
+        for region in regions
+    ]

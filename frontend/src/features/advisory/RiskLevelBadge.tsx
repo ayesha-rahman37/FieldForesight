@@ -94,7 +94,7 @@ export const RiskLevelBadge: React.FC<RiskLevelBadgeProps> = ({
 
       {showScore && score !== undefined && (
         <span
-          className={`ml-0.5 px-1.5 py-0.2 rounded-full font-mono text-[10px] font-semibold bg-white/70 border border-black/5`}
+          className={`ml-0.5 px-1.5 py-0.5 rounded-full font-mono text-[10px] font-semibold bg-white/70 border border-black/5`}
         >
           {Math.round(score)}%
         </span>

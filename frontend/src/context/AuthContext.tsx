@@ -47,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     await logoutUser();
     localStorage.removeItem('access_token');
+    localStorage.removeItem('fieldforesight_active_forecast');
     setToken(null);
     setUser(null);
   };

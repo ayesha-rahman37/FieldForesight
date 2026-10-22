@@ -1,8 +1,10 @@
-from datetime import datetime
-
+from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, Float, Integer, String, ForeignKey
-
 from app.database import Base
+
+
+def _utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class PredictionHistory(Base):
@@ -20,4 +22,4 @@ class PredictionHistory(Base):
     lower_bound = Column(Float, nullable=False)
     upper_bound = Column(Float, nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)

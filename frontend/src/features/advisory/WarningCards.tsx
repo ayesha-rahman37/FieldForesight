@@ -181,7 +181,7 @@ export const WarningCards: React.FC<WarningCardsProps> = ({
                     <h4 className={`text-xs font-bold leading-snug ${style.titleColor}`}>
                       {title}
                     </h4>
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-white/80 border border-black/5 text-slate-600">
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/80 border border-black/5 text-slate-600">
                       {alert.category}
                     </span>
                   </div>

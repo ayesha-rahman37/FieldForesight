@@ -1,87 +1,88 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
+
+from app.data.district_coordinates import normalize_region_name
 from app.database import get_db
-from app.models.user import User
 from app.models.role import Role
 from app.models.session import UserSession
+from app.models.user import User
+from app.models.user_preference import UserPreference
 from app.schemas.auth import (
-    RegisterRequest,
     LoginRequest,
-    UserResponse,
+    RegisterRequest,
     TokenResponse,
+    UserResponse,
 )
+from app.services.auth_service import get_current_user, security
 from app.services.security import hash_password, verify_password
-from app.services.auth_service import get_current_user
 
 router = APIRouter()
 
 
-from app.models.user_preference import UserPreference
+def _utcnow_naive():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 @router.post("/register", response_model=TokenResponse)
 def register_user(data: RegisterRequest, db: Session = Depends(get_db)):
     existing_user = (
         db.query(User)
-        .filter(
-            (User.username == data.username)
-            | (User.email == data.email)
-        )
+        .filter((User.username == data.username) | (User.email == data.email))
         .first()
     )
 
     if existing_user:
         raise HTTPException(
             status_code=400,
-            detail="Username or email already registered"
+            detail="Username or email already registered",
         )
 
-    farmer_role = (
-        db.query(Role)
-        .filter(Role.name == "farmer")
-        .first()
-    )
+    try:
+        farmer_role = db.query(Role).filter(Role.name == "farmer").first()
+        if not farmer_role:
+            farmer_role = Role(name="farmer")
+            admin_role = Role(name="admin")
+            db.add_all([admin_role, farmer_role])
+            db.flush()
 
-    if not farmer_role:
-        # Auto-create roles if they don't exist
-        farmer_role = Role(name="farmer")
-        admin_role = Role(name="admin")
-        db.add_all([admin_role, farmer_role])
+        new_user = User(
+            username=data.username,
+            email=data.email,
+            password_hash=hash_password(data.password),
+            role_id=farmer_role.id,
+            is_active=True,
+        )
+        db.add(new_user)
+        db.flush()
+
+        if data.region:
+            pref = UserPreference(
+                user_id=new_user.id,
+                last_crop="Rice",
+                last_region=normalize_region_name(data.region),
+            )
+            db.add(pref)
+
+        session_token = secrets.token_urlsafe(32)
+        expires_at = _utcnow_naive() + timedelta(hours=24)
+
+        new_session = UserSession(
+            user_id=new_user.id,
+            session_token=session_token,
+            expires_at=expires_at,
+        )
+        db.add(new_session)
         db.commit()
-        db.refresh(farmer_role)
-
-    new_user = User(
-        username=data.username,
-        email=data.email,
-        password_hash=hash_password(data.password),
-        role_id=farmer_role.id,
-        is_active=True,
-    )
-
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    if data.region:
-        pref = UserPreference(user_id=new_user.id, last_region=data.region)
-        db.add(pref)
-        db.commit()
-
-    # Generate a secure session token to auto-login
-    session_token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(hours=24)
-
-    new_session = UserSession(
-        user_id=new_user.id,
-        session_token=session_token,
-        expires_at=expires_at,
-    )
-
-    db.add(new_session)
-    db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Registration failed: {exc}") from exc
 
     return {
         "access_token": session_token,
@@ -93,43 +94,30 @@ def register_user(data: RegisterRequest, db: Session = Depends(get_db)):
 def login_user(data: LoginRequest, db: Session = Depends(get_db)):
     user = (
         db.query(User)
-        .filter(
-            (User.username == data.username)
-            | (User.email == data.username)
-        )
+        .filter((User.username == data.username) | (User.email == data.username))
         .first()
     )
 
-    if not user:
+    if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(
             status_code=401,
-            detail="Invalid username or password"
-        )
-
-    if not verify_password(data.password, user.password_hash):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid username or password"
+            detail="Invalid username or password",
         )
 
     if not user.is_active:
         raise HTTPException(
             status_code=403,
-            detail="User account is inactive"
+            detail="User account is inactive",
         )
 
-    # Generate a secure session token
     session_token = secrets.token_urlsafe(32)
-
-    # Session expires after 24 hours
-    expires_at = datetime.utcnow() + timedelta(hours=24)
+    expires_at = _utcnow_naive() + timedelta(hours=24)
 
     new_session = UserSession(
         user_id=user.id,
         session_token=session_token,
         expires_at=expires_at,
     )
-
     db.add(new_session)
     db.commit()
 
@@ -137,11 +125,13 @@ def login_user(data: LoginRequest, db: Session = Depends(get_db)):
         "access_token": session_token,
         "token_type": "bearer",
     }
+
+
 @router.get("/me", response_model=UserResponse)
 def get_my_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     role_obj = db.query(Role).filter(Role.id == current_user.role_id).first()
     role_name = role_obj.name if role_obj else "farmer"
-    
+
     return {
         "id": current_user.id,
         "username": current_user.username,
@@ -153,7 +143,18 @@ def get_my_profile(current_user: User = Depends(get_current_user), db: Session =
 
 
 @router.post("/logout")
-def logout_user(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    db.query(UserSession).filter(UserSession.user_id == current_user.id).delete()
+def logout_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    (
+        db.query(UserSession)
+        .filter(
+            UserSession.user_id == current_user.id,
+            UserSession.session_token == credentials.credentials,
+        )
+        .delete()
+    )
     db.commit()
     return {"message": "Logged out successfully"}

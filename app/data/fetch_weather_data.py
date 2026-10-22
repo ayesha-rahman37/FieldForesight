@@ -29,7 +29,7 @@ def fetch_weather_data(lat: float, lon: float, start_year: int, end_year: int):
         "format": "JSON"
     }
 
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=30)
     response.raise_for_status()
     data = response.json()
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     print("Fetching weather data from NASA POWER API...")
     daily_df = fetch_weather_data(LATITUDE, LONGITUDE, START_YEAR, END_YEAR)
 
-    output_dir = os.path.join("app", "data")
+    output_dir = os.path.dirname(os.path.abspath(__file__))
     os.makedirs(output_dir, exist_ok=True)
 
     daily_path = os.path.join(output_dir, "weather_daily.csv")

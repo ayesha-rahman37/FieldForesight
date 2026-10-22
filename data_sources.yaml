@@ -1,0 +1,118 @@
+# FieldForesight Data Sources & Data Stack Manifest
+# Maps directly to: Data Lifecycle, Data Stack, and Data - Detail sections
+
+version: "1.0"
+project: "FieldForesight"
+domain: "AgriTech / Climate-Smart Crop Yield Forecasting (Bangladesh)"
+
+data_sources:
+  - id: "copernicus_sentinel2_l2a"
+    name: "Copernicus Data Space Ecosystem — Sentinel-2 L2A Multispectral Imagery"
+    type: "Satellite / Remote Sensing API"
+    provider: "European Space Agency (ESA) / Copernicus Sentinel Hub"
+    endpoint: "https://sh.dataspace.copernicus.eu"
+    auth_method: "OAuth2 Client Credentials (SENTINELHUB_CLIENT_ID, SENTINELHUB_CLIENT_SECRET)"
+    acquisition_method: "Bounding-Box WMS / Process API via sentinelhub-py SDK ( EVALSCRIPT_NDVI_BANDS )"
+    formats_handled:
+      - "GeoTIFF (.tif) — float32 2-band raster (B04 Red, B08 NIR)"
+      - "JSON (OAuth token & metadata)"
+    update_frequency: "10-day rolling composite window (MosaickingOrder.LEAST_CC / least cloud cover)"
+    spatial_coverage: "All 64 administrative districts of Bangladesh (WGS84 / EPSG:4326 bounding boxes)"
+    resolution: "10m spatial resolution"
+    parsers_and_cleaning:
+      - "rasterio & numpy float32 band extraction"
+      - "Zero-denominator guard (denom[denom == 0] = 1e-6) and NaN filtering (np.nanmean)"
+      - "NDVI classification threshold parser (Healthy > 0.50, Moderate > 0.20, Poor <= 0.20)"
+    storage_targets:
+      - "SQLite ORM table: ndvi_cache (region_name, ndvi_value, vegetation_status, computed_at)"
+      - "Local GeoTIFF raster cache: satellite_output/satellite_cache/{region}_bands.tif"
+    code_references:
+      - "app/services/helper.py"
+      - "app/services/fetch_ndvi.py"
+      - "app/services/ndvi_service.py"
+      - "app/data/district_bbox.py"
+      - "app/models/ndvi_cache.py"
+
+  - id: "nasa_power_agroclimatology"
+    name: "NASA POWER Agroclimatology Daily & Yearly Climate API"
+    type: "Weather / Climate REST API"
+    provider: "NASA Langley Research Center (Prediction Of Worldwide Energy Resources)"
+    endpoint: "https://power.larc.nasa.gov/api/temporal/daily/point"
+    auth_method: "Public Scientific API (No API key required)"
+    acquisition_method: "HTTP GET REST extraction by district centroid latitude/longitude (community=AG)"
+    parameters_extracted:
+      - "T2M: Temperature at 2 Meters (°C)"
+      - "PRECTOTCORR: Precipitation Corrected (mm/day)"
+    formats_handled:
+      - "JSON (GeoJSON-like properties.parameter payload)"
+      - "CSV (processed daily & yearly weather tables)"
+    update_frequency: "Daily observations aggregated to annual crop-year series (2014–2025)"
+    spatial_coverage: "64 Bangladesh district centroids (app/data/district_coordinates.py)"
+    parsers_and_cleaning:
+      - "pandas DataFrame temporal parser (YYYYMMDD -> datetime64)"
+      - "Missing value sentinel filter (removes NASA POWER -999.0 fill values)"
+      - "Annual aggregation pipeline (avg_temperature mean, total_rainfall sum)"
+    storage_targets:
+      - "CSV artifacts: app/data/weather_daily.csv, app/data/weather_yearly.csv"
+      - "SQLite ORM tables: historical_yields.rainfall, processed_dataset.rainfall"
+    code_references:
+      - "app/data/fetch_weather_data.py"
+      - "app/data/district_coordinates.py"
+      - "app/services/data_source_status.py"
+      - "app/services/data_fusion_service.py"
+
+  - id: "dae_barc_brri_historical_yields"
+    name: "Bangladesh DAE / BARC / BRRI Historical Crop Yield & Certified Seed Variety Dataset"
+    type: "Government Agronomic Tabular Dataset"
+    provider: "Department of Agricultural Extension (DAE), BARC, BRRI & BARI"
+    acquisition_method: "Curated CSV ingestion & automated startup database seeding"
+    crops_covered:
+      - "Rice (Oryza sativa)"
+      - "Wheat (Triticum aestivum)"
+      - "Maize (Zea mays)"
+      - "Potato (Solanum tuberosum)"
+      - "Jute (Corchorus olitorius)"
+      - "Mustard (Brassica juncea)"
+      - "Lentil (Lens culinaris)"
+    formats_handled:
+      - "CSV (raw_yield_data.csv, historical_yield.csv)"
+      - "Pickle / Joblib (.pkl serialized Prophet models)"
+    update_frequency: "Annual seasonal harvest records (10-year calibration series per crop-district)"
+    parsers_and_cleaning:
+      - "Prophet time-series formatter (year -> ds datetime, yield -> y float, rainfall regressor)"
+      - "IQR & Z-score recent-anomaly detector and sample weighting (is_anomaly, weight in preprocess_data.py)"
+      - "Bilingual & legacy district alias normalizer (normalize_region_name in district_coordinates.py)"
+    storage_targets:
+      - "SQLite ORM tables: crops, regions, historical_yields, processed_dataset, crop_varieties, risk_thresholds, model_metadata"
+      - "Serialized Prophet models: app/data/models/{crop}__{region}.pkl (26 trained models)"
+    code_references:
+      - "app/scripts/load_data.py"
+      - "app/scripts/seed_samir_data.py"
+      - "app/services/preprocess_data.py"
+      - "train_model.py"
+      - "app/services/regional_fallback.py"
+
+  - id: "user_telemetry_and_scenario_inputs"
+    name: "Interactive Farmer Telemetry, Mixed-Cropping & Climate Scenario Inputs"
+    type: "User Input / Application Telemetry"
+    provider: "Authenticated Farmers & Agronomists via FieldForesight Web Application"
+    acquisition_method: "FastAPI REST POST/GET/DELETE endpoints with Pydantic v2 schema validation"
+    formats_handled:
+      - "JSON (REST request/response payloads)"
+    update_frequency: "Real-time / On-demand per user interaction"
+    parsers_and_cleaning:
+      - "Pydantic v2 strict type, range, and enum validation (app/schemas/*)"
+      - "Agronomic adjustment coefficient rules (variety multiplier, mixed-cropping bonus, cloud-fallback blend)"
+    storage_targets:
+      - "SQLite ORM tables: users, roles, sessions, user_preference, prediction_history, forecast_cache, advisory_history, explainability_cache, mixed_cropping_mappings"
+    privacy_and_ownership:
+      - "Argon2id password hashing (pwdlib[argon2])"
+      - "Expiring Bearer session tokens & RBAC (farmer vs admin)"
+      - "Self-service farmer data inspection (/api/data-ownership/my_data) and deletion (/api/data-ownership/delete)"
+    code_references:
+      - "app/routes/prediction.py"
+      - "app/routes/scenario_planner.py"
+      - "app/routes/advisory_risk.py"
+      - "app/routes/data_ownership.py"
+      - "app/services/adjustment_rules.py"
+

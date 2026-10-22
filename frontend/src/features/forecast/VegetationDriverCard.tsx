@@ -10,27 +10,31 @@ import type { ExplainabilityResponse } from '../explainability/types';
 
 interface VegetationDriverCardProps {
   region: string;
+  crop?: string;
   predictionId: number | null;
+  rainfallAdj?: number;
+  tempAdj?: number;
 }
 
 export const VegetationDriverCard: React.FC<VegetationDriverCardProps> = ({
   region,
+  crop = 'Wheat',
   predictionId,
+  rainfallAdj = 0,
+  tempAdj = 0,
 }) => {
   const { t } = useLanguage();
 
-  // Vegetation Health State
   const [ndviData, setNdviData] = useState<NDVIResponse | null>(null);
   const [rawNdviLoading, setRawNdviLoading] = useState(true);
   const [ndviError, setNdviError] = useState(false);
 
-  // Driver Attribution State
   const [explainData, setExplainData] = useState<ExplainabilityResponse | null>(null);
   const [rawExplainLoading, setRawExplainLoading] = useState(true);
   const [explainError, setExplainError] = useState(false);
 
-  const ndviLoading = useMinDelay(rawNdviLoading, 300);
-  const explainLoading = useMinDelay(rawExplainLoading, 300);
+  const ndviLoading = useMinDelay(rawNdviLoading, 250);
+  const explainLoading = useMinDelay(rawExplainLoading, 250);
 
   const fetchNDVI = async () => {
     if (!region) {
@@ -67,137 +71,168 @@ export const VegetationDriverCard: React.FC<VegetationDriverCardProps> = ({
   };
 
   useEffect(() => {
-    fetchNDVI();
+    void fetchNDVI();
   }, [region]);
 
   useEffect(() => {
     if (predictionId) {
-      fetchExplainability();
+      void fetchExplainability();
     }
   }, [predictionId]);
 
-  // Compute ring parameters
-  const ndviValue = ndviData?.ndvi_value ?? 0.65;
-  const normalizedNdvi = Math.max(0, (ndviValue + 1) / 2);
-  const radius = 28;
+  const ndviValue = ndviData?.ndvi_value ?? 0.26;
+  const normalizedNdvi = Math.min(1, Math.max(0.12, ndviValue));
+  const radius = 23;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - normalizedNdvi * circumference;
 
-  let ringColor = '#E5A93C'; // Moderate amber default
-  let statusBg = '#FDF4E3';
-  let statusBorder = '#F3DBAF';
-  let statusText = '#B47818';
+  let ringColor = '#D97706'; // Amber for Moderate
+  let badgeClass = 'bg-amber-50 border-amber-200 text-amber-800';
   let statusLabel = t('মাঝারি', 'Moderate');
-  let statusDesc = t('মাঝারি ভেজিটেশন', 'Moderate vegetation');
+  let statusDesc = t(
+    `${crop} ফসলের মাঝারি ক্যানোপি ঘনত্ব।`,
+    `Normal canopy density for mid-vegetative ${crop.toLowerCase()}.`
+  );
 
   if (ndviData) {
     const sLower = ndviData.vegetation_status.toLowerCase();
-    if (sLower.includes('healthy') || sLower.includes('ভাল') || sLower.includes('উত্তম') || sLower.includes('good')) {
-      ringColor = '#0B5D45';
-      statusBg = '#E6EFE6';
-      statusBorder = '#C5DCBF';
-      statusText = '#0B5D45';
+    if (sLower.includes('healthy') || sLower.includes('ভাল') || sLower.includes('উত্তম')) {
+      ringColor = '#059669';
+      badgeClass = 'bg-emerald-50 border-emerald-200 text-emerald-800';
       statusLabel = t('উত্তম', 'Healthy');
-      statusDesc = t('উত্তম ভেজিটেশন', 'Healthy vegetation');
+      statusDesc = t(
+        `${crop} ফসলের শক্তিশালী ও সুস্থ ক্যানোপি ঘনত্ব।`,
+        `Strong canopy vigor for mid-vegetative ${crop.toLowerCase()}.`
+      );
     } else if (sLower.includes('poor') || sLower.includes('খারাপ')) {
-      ringColor = '#C62828';
-      statusBg = '#F8E9E4';
-      statusBorder = '#F3C7BE';
-      statusText = '#C62828';
+      ringColor = '#DC2626';
+      badgeClass = 'bg-red-50 border-red-200 text-red-700';
       statusLabel = t('দুর্বল', 'Poor');
-      statusDesc = t('দুর্বল ভেজিটেশন', 'Poor vegetation');
+      statusDesc = t(
+        `${crop} ফসলের ক্যানোপি ঘনত্ব গড়ের নিচে।`,
+        `Low canopy density detected for ${crop.toLowerCase()}.`
+      );
     }
   }
 
-  // Driver Attribution factors mapping
   const driverContributions = explainData?.contributions ?? {
-    rainfall: 40,
-    soil: 35,
-    temperature: 25,
+    rainfall: 34.6,
+    soil: 16.9,
+    temperature: 48.5,
   };
 
+  // Dynamically weight driver attribution when rainfall or temperature sliders are adjusted
+  const rawRainWeight = Math.max(
+    5,
+    Number(driverContributions.rainfall ?? 34.6) * (1 + Math.abs(rainfallAdj) / 60)
+  );
+  const rawSoilWeight = Math.max(5, Number(driverContributions.soil ?? 16.9));
+  const rawTempWeight = Math.max(
+    5,
+    Number(driverContributions.temperature ?? 48.5) * (1 + Math.abs(tempAdj) / 6)
+  );
+  const weightSum = rawRainWeight + rawSoilWeight + rawTempWeight;
+
   const formattedDrivers = [
-    { key: 'Rainfall', label: t('বৃষ্টিপাত', 'RAINFALL'), val: Number(driverContributions.rainfall || driverContributions.Rainfall || 40) },
-    { key: 'Soil', label: t('মাটির গুণমান ও এনডিভিআই', 'SOIL & NDVI'), val: Number(driverContributions.soil || driverContributions.Soil || 35) },
-    { key: 'Temperature', label: t('তাপমাত্রা', 'TEMPERATURE'), val: Number(driverContributions.temperature || driverContributions.Temperature || 25) },
+    {
+      key: 'rainfall',
+      label: t('বৃষ্টিপাতের প্রভাব', 'Rainfall Impact'),
+      val: (rawRainWeight / weightSum) * 100,
+      barClass: 'bg-blue-600',
+    },
+    {
+      key: 'soil',
+      label: t('মাটি ও এনডিভিআই অবস্থা', 'Soil & NDVI Status'),
+      val: (rawSoilWeight / weightSum) * 100,
+      barClass: 'bg-[#047857]',
+    },
+    {
+      key: 'temperature',
+      label: t('তাপমাত্রার প্রভাব', 'Temperature Stress'),
+      val: (rawTempWeight / weightSum) * 100,
+      barClass: 'bg-amber-600',
+    },
   ];
 
   return (
-    <div className="bg-[#FBFAF6] border border-[#E5E1D6] rounded-2xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex flex-col justify-between h-full space-y-5">
-      {/* 1. VEGETATION HEALTH SECTION */}
-      <div>
-        <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-[#4A4A44] mb-3">
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+      {/* 1. VEGETATION HEALTH */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.06em] text-slate-600">
           {t('ভেজিটেশন হেলথ', 'VEGETATION HEALTH')}
         </h3>
-
-        {ndviLoading ? (
-          <div className="flex items-center gap-4 py-1">
-            <Skeleton width="72px" height="72px" borderRadius="9999px" className="shrink-0" />
-            <div className="space-y-2 flex-1">
-              <Skeleton width="60px" height="18px" borderRadius="12px" />
-              <Skeleton width="110px" height="14px" borderRadius="4px" />
-              <Skeleton width="90px" height="12px" borderRadius="4px" />
-            </div>
-          </div>
-        ) : ndviError ? (
-          <ErrorState
-            message={t('ভেজিটেশন লোড করা যায়নি', 'Failed to load vegetation data')}
-            featureName={t('ভেজিটেশন হেলথ', 'Vegetation Health')}
-            onRetry={fetchNDVI}
-          />
-        ) : (
-          <div className="flex items-center gap-4">
-            {/* Ring */}
-            <div className="relative w-[72px] h-[72px] shrink-0">
-              <svg width="72" height="72" viewBox="0 0 72 72">
-                <circle cx="36" cy="36" r={radius} fill="none" stroke="#E5E1D6" strokeWidth="6" />
-                <circle
-                  cx="36" cy="36" r={radius}
-                  fill="none" stroke={ringColor} strokeWidth="6"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                  transform="rotate(-90 36 36)"
-                  style={{ transition: 'stroke-dashoffset 0.8s ease' }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-[#1F1F1B]">
-                {ndviValue.toFixed(2)}
-              </div>
-            </div>
-
-            {/* Status Pills */}
-            <div className="space-y-0.5">
-              <span
-                className="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full border mb-1"
-                style={{ backgroundColor: statusBg, borderColor: statusBorder, color: statusText }}
-              >
-                {statusLabel}
-              </span>
-              <div className="text-xs font-semibold text-[#1F1F1B]">{statusDesc}</div>
-              <div className="text-[11px] text-slate-400 font-medium">NDVI · Sentinel-2</div>
-            </div>
-          </div>
-        )}
+        <span className="text-[10px] font-medium text-slate-400">Sentinel-2</span>
       </div>
 
-      <hr className="border-[#E5E1D6]/70 my-2" />
+      {ndviLoading ? (
+        <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+          <Skeleton width="56px" height="56px" borderRadius="9999px" className="shrink-0" />
+          <div className="space-y-2 flex-1">
+            <Skeleton width="70px" height="16px" borderRadius="6px" />
+            <Skeleton width="120px" height="12px" borderRadius="4px" />
+          </div>
+        </div>
+      ) : ndviError ? (
+        <ErrorState
+          message={t('ভেজিটেশন লোড করা যায়নি', 'Failed to load vegetation data')}
+          featureName={t('ভেজিটেশন হেলথ', 'Vegetation Health')}
+          onRetry={fetchNDVI}
+        />
+      ) : (
+        <div className="p-3.5 rounded-xl bg-slate-50/90 border border-slate-200/70 flex items-center gap-3.5">
+          {/* Circular Gauge */}
+          <div className="relative w-14 h-14 shrink-0">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <circle cx="28" cy="28" r={radius} fill="none" stroke="#E2E8F0" strokeWidth="5" />
+              <circle
+                cx="28"
+                cy="28"
+                r={radius}
+                fill="none"
+                stroke={ringColor}
+                strokeWidth="5"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                transform="rotate(-90 28 28)"
+                style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center text-xs font-extrabold text-slate-900">
+              {ndviValue.toFixed(2)}
+            </div>
+          </div>
 
-      {/* 2. DRIVER ATTRIBUTION SECTION */}
-      <div>
-        <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-[#4A4A44] mb-3">
+          {/* Right Info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}`}>
+                {statusLabel}
+              </span>
+              <span className="text-[10px] font-medium text-slate-400">NDVI Index</span>
+            </div>
+            <p className="text-[11px] text-slate-700 font-medium leading-snug mt-1">
+              {statusDesc}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 2. DRIVER ATTRIBUTION */}
+      <div className="mt-5">
+        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">
           {t('ড্রাইভার অ্যাট্রিবিউশন', 'DRIVER ATTRIBUTION')}
-        </h3>
+        </h4>
 
         {explainLoading && predictionId ? (
-          <div className="space-y-3 py-1">
+          <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="space-y-1.5">
                 <div className="flex justify-between">
-                  <Skeleton width="80px" height="12px" borderRadius="4px" />
+                  <Skeleton width="90px" height="12px" borderRadius="4px" />
                   <Skeleton width="36px" height="12px" borderRadius="4px" />
                 </div>
-                <Skeleton width="100%" height="8px" borderRadius="9999px" />
+                <Skeleton width="100%" height="6px" borderRadius="9999px" />
               </div>
             ))}
           </div>
@@ -208,17 +243,17 @@ export const VegetationDriverCard: React.FC<VegetationDriverCardProps> = ({
             onRetry={fetchExplainability}
           />
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {formattedDrivers.map((driver) => (
               <div key={driver.key}>
-                <div className="flex items-center justify-between text-[11px] font-bold text-[#4A4A44] uppercase mb-1">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
                   <span>{driver.label}</span>
-                  <span>{driver.val.toFixed(1)}%</span>
+                  <span className="font-bold text-slate-900">{driver.val.toFixed(1)}%</span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-[#D9DDD0] overflow-hidden">
+                <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[#0B5D45] transition-all duration-500"
-                    style={{ width: `${Math.min(100, Math.max(0, driver.val))}%` }}
+                    className={`h-full rounded-full ${driver.barClass} transition-all duration-500`}
+                    style={{ width: `${Math.min(100, Math.max(4, driver.val))}%` }}
                   />
                 </div>
               </div>

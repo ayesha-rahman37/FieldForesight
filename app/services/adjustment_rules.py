@@ -8,9 +8,9 @@ mixed-cropping support. Supports certified Bangladeshi varieties
 VARIETY_COEFFICIENTS = {
     # Broad categories
     "HYV": 1.0,
-    "Hybrid": 1.12,
-    "Local": 0.82,
-    "Stress-Tolerant": 1.02,
+    "HYBRID": 1.12,
+    "LOCAL": 0.82,
+    "STRESS_TOLERANT": 1.02,
 
     # Specific Rice varieties
     "BRRI_DHAN_28": 1.02,
@@ -37,6 +37,9 @@ VARIETY_COEFFICIENTS = {
 
     # Specific Jute varieties
     "BJRI_TOSSA_8": 1.0,
+
+    # Specific Lentil varieties
+    "BARI_MASUR_8": 1.08,
 }
 
 # Mixed-cropping adjustments
@@ -53,11 +56,10 @@ def get_variety_coefficient(variety: str) -> float:
     normalized = variety.strip().replace(" ", "_").replace("-", "_").upper()
     if normalized in VARIETY_COEFFICIENTS:
         return VARIETY_COEFFICIENTS[normalized]
-    # Check substring matches
+    # Check if a specific variety key (len >= 4) appears inside normalized input
     for key, val in VARIETY_COEFFICIENTS.items():
-        if key in normalized or normalized in key:
+        if len(key) >= 4 and key in normalized:
             return val
-    # If variety has 'local' in name
     if "LOCAL" in normalized or "DESHI" in normalized:
         return 0.82
     if "HYBRID" in normalized:

@@ -1,14 +1,18 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime
+from datetime import datetime, timezone
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey
 from app.database import Base
+
+
+def _utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class AdvisoryHistory(Base):
     __tablename__ = "advisory_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    prediction_id = Column(Integer, nullable=True, index=True)
-    user_id = Column(Integer, nullable=True, index=True)
+    prediction_id = Column(Integer, ForeignKey("prediction_history.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
 
     crop = Column(String(100), nullable=False)
     region = Column(String(100), nullable=False)
@@ -29,4 +33,4 @@ class AdvisoryHistory(Base):
     llm_provider = Column(String(50), nullable=False, default="groq")  # 'groq' | 'rule_engine'
     llm_model = Column(String(100), nullable=True, default="llama-3.3-70b-versatile")
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)

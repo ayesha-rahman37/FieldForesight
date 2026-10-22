@@ -23,6 +23,10 @@ export const LoginPage: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
+  const handleGoogleSignIn = () => {
+    openComingSoon(t('গুগল দিয়ে সাইন ইন', 'Google Sign In'));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -58,19 +62,8 @@ export const LoginPage: React.FC = () => {
   return (
     <div
       className="min-h-screen text-slate-800 bg-grid-pattern flex flex-col justify-between selection:bg-emerald-200 selection:text-emerald-950"
-      style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', backgroundColor: '#F8F9F5' }}
+      style={{ fontFamily: 'var(--font-sans)', backgroundColor: '#F8F9F5' }}
     >
-      <style>{`
-        .bg-grid-pattern {
-          background-size: 32px 32px;
-          background-image:
-            linear-gradient(to right, rgba(6, 78, 59, 0.04) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(6, 78, 59, 0.04) 1px, transparent 1px);
-        }
-        .btn-glow:hover {
-          box-shadow: 0 10px 25px -5px rgba(6, 95, 70, 0.35);
-        }
-      `}</style>
 
       <header className="w-full bg-white/80 backdrop-blur-md border-b border-emerald-900/10 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -101,18 +94,6 @@ export const LoginPage: React.FC = () => {
             </Link>
           </div>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-            <Link className="hover:text-emerald-800 transition-colors" to="/">
-              {t('হোম', 'Home')}
-            </Link>
-            <Link className="hover:text-emerald-800 transition-colors" to="/dashboard">
-              {t('ফলন ইনসাইটস', 'Yield Insights')}
-            </Link>
-            <Link className="hover:text-emerald-800 transition-colors" to="/security">
-              {t('নিরাপত্তা ও ডকুমেন্টস', 'Security & Docs')}
-            </Link>
-          </nav>
-
           <div className="flex items-center gap-3 sm:gap-4">
             <button
               type="button"
@@ -135,11 +116,6 @@ export const LoginPage: React.FC = () => {
             >
               {t('একাউন্ট তৈরি করুন', 'Create Account')}
             </Link>
-            <button type="button" className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100">
-              <svg className="w-6 h-6 shrink-0" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M4 6h16M4 12h16m-7 6h7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-              </svg>
-            </button>
           </div>
         </div>
       </header>
@@ -257,6 +233,7 @@ export const LoginPage: React.FC = () => {
               <div className="mb-6">
                 <button
                   type="button"
+                  onClick={handleGoogleSignIn}
                   className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm cursor-pointer"
                 >
                   <svg className="w-5 h-5 shrink-0" width="20" height="20" viewBox="0 0 24 24">

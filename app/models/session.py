@@ -1,6 +1,10 @@
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from app.database import Base
-import datetime
+
+
+def _utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class UserSession(Base):
@@ -10,7 +14,4 @@ class UserSession(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     session_token = Column(String(255), unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
-    created_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow
-    )
+    created_at = Column(DateTime, default=_utcnow, nullable=False)

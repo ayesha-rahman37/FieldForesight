@@ -36,9 +36,9 @@ export const TopNavbar: React.FC = () => {
     setMobileMenuOpen(false);
   }, [location.pathname, location.search]);
 
-  // Live clock for Sentinel-2 status tooltip
+  // Live clock for Sentinel-2 status badge
   useEffect(() => {
-    const updateTime = () => setLiveTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    const updateTime = () => setLiveTime(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }));
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
@@ -66,36 +66,44 @@ export const TopNavbar: React.FC = () => {
   const isHomeActive = location.pathname === '/';
   const isDashboardActive = location.pathname === '/dashboard' && (!currentTab || currentTab === 'overview');
   const isMyDataActive = location.pathname === '/dashboard' && currentTab === 'my-data';
+  const isYieldInsightsActive = location.pathname === '/yield-insights';
   const isSecurityActive = location.pathname === '/security';
 
   const linkClass = (active: boolean) =>
-    `h-[36px] min-h-[44px] md:min-h-0 px-3.5 text-sm font-medium rounded-lg transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
+    `h-[34px] min-h-[44px] md:min-h-0 px-3.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
       active
-        ? 'bg-white/10 text-white font-semibold'
-        : 'text-white/75 hover:text-white hover:bg-white/5'
+        ? 'bg-emerald-900/70 text-white font-semibold border border-emerald-400/50 shadow-xs'
+        : 'text-white/80 hover:text-white hover:bg-white/5'
     }`;
 
   return (
     <header
-      className={`w-full bg-[#04473E] border-b border-white/[0.08] sticky top-0 z-50 transition-transform duration-300 ease-in-out ${
+      className={`w-full bg-[#064E3B] border-b border-white/[0.08] sticky top-0 z-50 transition-transform duration-300 ease-in-out ${
         visible ? 'translate-y-0' : '-translate-y-full'
       }`}
     >
-      <div className="max-w-[1280px] mx-auto px-6 h-[56px] flex items-center justify-between gap-4">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-[54px] flex items-center justify-between gap-4">
         
-        {/* LEFT: 32px Logo Mark + "FieldForesight" Title */}
-        <div className="flex items-center gap-2.5">
+        {/* LEFT: Logo Mark + "FieldForesight" Title + Sentinel-2 Status Pill */}
+        <div className="flex items-center gap-4">
           <Link
             to={user ? "/dashboard" : "/"}
             className="flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-lg p-0.5"
           >
-            <div className="w-8 h-8 rounded-lg bg-[#022c22] border border-emerald-400/40 flex items-center justify-center transition-transform group-hover:scale-105">
-              <Sprout className="w-5 h-5 text-emerald-400" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-800/80 border border-emerald-400/40 flex items-center justify-center transition-transform group-hover:scale-105">
+              <Sprout className="w-4 h-4 text-emerald-300" />
             </div>
-            <span className="text-white font-semibold text-base tracking-tight">
-              FieldForesight
+            <span className="text-white font-bold text-base tracking-tight">
+              Field<span className="text-emerald-300 font-semibold">Foresight</span>
             </span>
           </Link>
+
+          <div className="hidden lg:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#033527] border border-emerald-500/25 text-[11px] font-medium text-emerald-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Sentinel-2 Multispectral Synced</span>
+            <span className="text-emerald-500/60">|</span>
+            <span className="text-emerald-300/80">Dhaka {liveTime}</span>
+          </div>
         </div>
 
         {/* CENTER: Navigation Links */}
@@ -114,7 +122,7 @@ export const TopNavbar: React.FC = () => {
             </Link>
           )}
 
-          <Link to={user ? "/dashboard" : "/login"} className={linkClass(false)}>
+          <Link to="/yield-insights" className={linkClass(isYieldInsightsActive)}>
             {t('ফলন ইনসাইট', 'Yield Insights')}
           </Link>
 
@@ -159,38 +167,28 @@ export const TopNavbar: React.FC = () => {
           </div>
         </nav>
 
-        {/* RIGHT: Status Dot + Segmented Language Switcher + User Profile / Auth */}
-        <div className="hidden md:flex items-center gap-4">
-          
-          {/* (1) 8px Green Status Dot with Tooltip */}
-          <div className="relative group flex items-center">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse cursor-pointer ring-4 ring-emerald-400/20" />
-            <div className="absolute right-0 top-full mt-2.5 hidden group-hover:block bg-slate-900/95 text-white text-[11px] font-medium px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap z-50 border border-slate-700/80">
-              Sentinel-2 synced · {liveTime || '10:13 PM'}
-            </div>
-          </div>
-
-          {/* (2) Compact Segmented Language Switcher "বাংলা | EN" (32px high, 999px radius) */}
-          <div className="h-8 bg-[#022c22] border border-emerald-400/30 p-0.5 inline-flex items-center rounded-full text-xs font-bold shadow-inner">
+        {/* RIGHT: Segmented Language Switcher + User Profile / Auth */}
+        <div className="hidden md:flex items-center gap-3">
+          {/* Compact Segmented Language Switcher "বাংলা | EN" */}
+          <div className="h-7 bg-[#033527] border border-emerald-500/30 p-0.5 inline-flex items-center rounded-md text-[11px] font-bold shadow-inner">
             <button
               type="button"
               onClick={() => language !== 'bn' && toggleLanguage()}
-              className={`h-full px-2.5 rounded-full transition-all ${
+              className={`h-full px-2.5 rounded transition-all ${
                 language === 'bn'
-                  ? 'bg-white/20 text-white font-extrabold shadow-sm'
-                  : 'text-emerald-300/70 hover:text-white'
+                  ? 'bg-emerald-500 text-white font-bold shadow-xs'
+                  : 'text-emerald-200/75 hover:text-white'
               }`}
             >
               বাংলা
             </button>
-            <span className="text-emerald-400/40 text-[10px] px-0.5">|</span>
             <button
               type="button"
               onClick={() => language !== 'en' && toggleLanguage()}
-              className={`h-full px-2.5 rounded-full transition-all ${
+              className={`h-full px-2.5 rounded transition-all ${
                 language === 'en'
-                  ? 'bg-white/20 text-white font-extrabold shadow-sm'
-                  : 'text-emerald-300/70 hover:text-white'
+                  ? 'bg-emerald-500 text-white font-bold shadow-xs'
+                  : 'text-emerald-200/75 hover:text-white'
               }`}
             >
               EN
@@ -299,6 +297,9 @@ export const TopNavbar: React.FC = () => {
                 {t('আমার ডেটা', 'My Data')}
               </Link>
             )}
+            <Link to="/yield-insights" className="min-h-[44px] flex items-center px-4 rounded-xl text-base font-medium text-white/90 hover:bg-white/10">
+              {t('ফলন ইনসাইট', 'Yield Insights')}
+            </Link>
             <Link to="/security" className="min-h-[44px] flex items-center px-4 rounded-xl text-base font-medium text-white/90 hover:bg-white/10">
               {t('নিরাপত্তা ও আর্কিটেকচার', 'Security & Docs')}
             </Link>
