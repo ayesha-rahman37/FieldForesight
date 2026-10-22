@@ -61,3 +61,4 @@ field_foresight.db
 satellite_output/
 app/data/chroma/
 *.pkl
+tests/
