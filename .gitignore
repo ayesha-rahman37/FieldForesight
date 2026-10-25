@@ -1,60 +1,104 @@
-# ===== Python =====
+# ==============================================================================
+# FieldForesight Root .gitignore
+# ==============================================================================
+
+# ===== Python & Bytecode =====
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 
-# ===== Virtual Environment =====
+# ===== Virtual Environments =====
 venv/
 env/
 ENV/
 .venv/
+env.bak/
+venv.bak/
 
-# ===== Environment Variables =====
+# ===== Environment Variables & Secrets =====
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+frontend/.env
+frontend/.env.*
+!.env.example
+!frontend/.env.example
 
-# ===== ML Model & Data Files =====
+# Secret Keys, SSL Certificates & Service Account Credentials
+*.pem
+*.key
+*.cert
+*.crt
+credentials.json
+client_secret*.json
+service-account*.json
+secrets.json
+
+# ===== Tests, Coverage & QA =====
+tests/
+test/
+*_test.py
+test_*.py
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# ===== ML Models, Weights & Serialized Data =====
 *.h5
 *.joblib
+*.pkl
+*.pt
+*.pth
+*.onnx
 
-# ===== FastAPI / Python Cache =====
+# ===== Vector Databases & Local Stores =====
+app/data/chroma/
+chroma/
+*.sqlite
+*.sqlite3
+*.db
+field_foresight.db
+*.dump
+*.sql
+
+# ===== Cache & Build Artifacts =====
 *.egg-info/
-.pytest_cache/
 .mypy_cache/
 .ruff_cache/
-
-# ===== Jupyter Notebook =====
 .ipynb_checkpoints/
+satellite_output/
 
-# ===== Node.js / React =====
+# ===== Node.js / React Frontend =====
 node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+build/
+.next/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-dist/
-build/
-.next/
+pnpm-debug.log*
+.eslintcache
+.stylelintcache
 
-# ===== IDE / Editor =====
+# ===== IDEs, OS & Tooling =====
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# ===== OS Files =====
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# ===== Logs =====
+# ===== Logs & Temporary Files =====
 *.log
 logs/
-
-# ===== Database & Output =====
-*.sqlite3
-field_foresight.db
-*.db
-satellite_output/
+scratch/
+.gemini/

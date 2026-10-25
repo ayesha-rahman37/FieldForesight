@@ -12,6 +12,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import api from '../../api/client';
+import { ErrorState } from '../../components/common/ErrorState';
 
 export interface RiskAlertItem {
   id: string;
@@ -133,15 +134,11 @@ export const WarningCards: React.FC<WarningCardsProps> = ({
 
   if (error) {
     return (
-      <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center justify-between">
-        <span>{t('ঝুঁকির সতর্কতা লোড করা যায়নি।', 'Failed to load risk warnings.')}</span>
-        <button
-          onClick={loadAlerts}
-          className="px-2.5 py-1 bg-red-600 text-white rounded-lg text-[11px] font-semibold"
-        >
-          {t('পুনরায় চেষ্টা', 'Retry')}
-        </button>
-      </div>
+      <ErrorState
+        compact={true}
+        featureName={t('ঝুঁকি সতর্কতা', 'Risk Alert')}
+        onRetry={() => void loadAlerts()}
+      />
     );
   }
 
@@ -155,7 +152,7 @@ export const WarningCards: React.FC<WarningCardsProps> = ({
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1.5 custom-scrollbar scroll-smooth">
       {alerts.map((alert) => {
         const style = getCardStyle(alert.level);
         const isExpanded = expandedId === alert.id;
@@ -181,7 +178,7 @@ export const WarningCards: React.FC<WarningCardsProps> = ({
                     <h4 className={`text-xs font-bold leading-snug ${style.titleColor}`}>
                       {title}
                     </h4>
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-white/80 border border-black/5 text-slate-600">
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/80 border border-black/5 text-slate-600">
                       {alert.category}
                     </span>
                   </div>

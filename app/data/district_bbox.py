@@ -1,13 +1,15 @@
-from app.data.district_coordinates import DISTRICT_COORDINATES
+from app.data.district_coordinates import DISTRICT_COORDINATES, normalize_region_name
 
-BBOX_SIZE = .05
+BBOX_SIZE = 0.05
 
-def get_region_bbox(region:str):
 
-    if region not in DISTRICT_COORDINATES:
+def get_region_bbox(region: str):
+    canonical = normalize_region_name(region)
+    coords = DISTRICT_COORDINATES.get(canonical) or DISTRICT_COORDINATES.get(region)
+    if not coords:
         raise ValueError(f"District '{region}' not found in coordinates list")
 
-    lat,lon = DISTRICT_COORDINATES[region]
+    lat, lon = coords
 
     min_lat = lat - BBOX_SIZE
     max_lat = lat + BBOX_SIZE

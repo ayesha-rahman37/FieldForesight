@@ -49,8 +49,23 @@ def get_community_aggregation(
     if historical_trend:
         avg_yield = sum(p.yield_value for p in historical_trend) / len(historical_trend)
     else:
-        # No data seeded yet — use the model prediction itself as reference
-        avg_yield = llm_prediction
+        try:
+            from app.services.regional_fallback import get_regional_historical_data
+
+            fb_hist = get_regional_historical_data(crop=crop.strip(), region=region.strip())
+            years = fb_hist.get("years", [])
+            yields = fb_hist.get("yield", [])
+            historical_trend = [
+                RegionYieldPoint(year=int(y), yield_value=round(float(v), 2))
+                for y, v in zip(years, yields)
+            ]
+            avg_yield = (
+                sum(p.yield_value for p in historical_trend) / len(historical_trend)
+                if historical_trend
+                else llm_prediction
+            )
+        except Exception:
+            avg_yield = llm_prediction
 
     avg_yield = round(avg_yield, 2)
 

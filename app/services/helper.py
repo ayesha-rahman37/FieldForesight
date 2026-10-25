@@ -18,9 +18,9 @@ env_path = Path(__file__).resolve().parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # --- Sentinel Hub Config (Copernicus Data Space Ecosystem) ---
-config = SHConfig()
-config.sh_client_id = os.getenv("SENTINELHUB_CLIENT_ID")
-config.sh_client_secret = os.getenv("SENTINELHUB_CLIENT_SECRET")
+config = SHConfig(use_defaults=True)
+config.sh_client_id = os.getenv("SENTINELHUB_CLIENT_ID") or ""
+config.sh_client_secret = os.getenv("SENTINELHUB_CLIENT_SECRET") or ""
 
 # Copernicus Data Space endpoints — default sentinelhub library points elsewhere
 config.sh_base_url = "https://sh.dataspace.copernicus.eu"
@@ -68,7 +68,14 @@ def fetch_ndvi_for_region(region: str) -> float:
         config=config
     )
 
-    data = request.get_data()[0]
+    try:
+        downloads = request.get_data()
+        if not downloads:
+            raise RuntimeError("Sentinel Hub returned empty payload")
+        data = downloads[0]
+    except Exception as exc:
+        raise RuntimeError(f"Sentinel Hub data fetch failed: {exc}") from exc
+
     red = data[:, :, 0].astype(float)
     nir = data[:, :, 1].astype(float)
 
@@ -86,11 +93,12 @@ def fetch_ndvi_for_region(region: str) -> float:
 
 
 def save_raw_bands(red, nir, bbox_coords, region_name):
-    output_dir = "satellite_output/satellite_cache"
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    output_dir = repo_root / "satellite_output" / "satellite_cache"
     os.makedirs(output_dir, exist_ok=True)
 
     transform = from_bounds(*bbox_coords, red.shape[1], red.shape[0])
-    output_path = f"{output_dir}/{region_name}_bands.tif"
+    output_path = str(output_dir / f"{region_name}_bands.tif")
 
     with rasterio.open(
         output_path, 'w', driver='GTiff',

@@ -1,8 +1,10 @@
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
+from app.data.district_coordinates import normalize_region_name
 from app.models.risk_threshold import RiskThreshold
 from app.models.crop_variety import CropVariety
 from app.models.ndvi_cache import NDVICache
+from app.models.agri_alert import AgriAlert
 
 
 # Regional agricultural climate zones in Bangladesh
@@ -20,6 +22,8 @@ def calculate_risk_and_alerts(
     upper_bound: float,
     cropping_type: str = "single",
     db: Optional[Session] = None,
+    rainfall_adjustment_percent: float = 0.0,
+    temperature_adjustment_percent: float = 0.0,
 ) -> Dict[str, Any]:
     """
     Evaluates agricultural risk and threshold detection based on:
@@ -73,12 +77,12 @@ def calculate_risk_and_alerts(
             "id": "alert-yield-moderate",
             "category": "yield",
             "level": "medium",
-            "title": f"মাঝারি ফলন সতর্কতা",
-            "title_bn": f"মাঝারি ফলন সতর্কতা",
-            "title_en": f"Moderate Yield Alert",
-            "description": f"কাঙ্ক্ষিত ফলন অর্জনে পরিমিত সার ও সময়মতো আগাছা পরিষ্কার করা আবশ্যক।",
-            "description_bn": f"কাঙ্ক্ষিত ফলন অর্জনে পরিমিত সার ও সময়মতো আগাছা পরিষ্কার করা আবশ্যক।",
-            "description_en": f"Forecast yield indicates moderate shortfall. Timely weeding and top-dressing required.",
+            "title": "মাঝারি ফলন সতর্কতা",
+            "title_bn": "মাঝারি ফলন সতর্কতা",
+            "title_en": "Moderate Yield Alert",
+            "description": "কাঙ্ক্ষিত ফলন অর্জনে পরিমিত সার ও সময়মতো আগাছা পরিষ্কার করা আবশ্যক।",
+            "description_bn": "কাঙ্ক্ষিত ফলন অর্জনে পরিমিত সার ও সময়মতো আগাছা পরিষ্কার করা আবশ্যক।",
+            "description_en": "Forecast yield indicates moderate shortfall. Timely weeding and top-dressing required.",
             "action_bn": "শতক প্রতি অতিরিক্ত ২৫০ গ্রাম পটাশ ও ইউরিয়া প্রয়োগ নিশ্চিত করুন।",
             "action_en": "Ensure balanced top-dressing of nitrogen and potash per decimal.",
         })
@@ -118,6 +122,10 @@ def calculate_risk_and_alerts(
     variety_type = variety_obj.variety_type if variety_obj else ("Local" if "local" in variety_code.lower() else "HYV")
     stress_tolerance = variety_obj.stress_tolerance if variety_obj else "Standard"
 
+    if variety_type == "Local":
+        risk_score += 5.0
+        risk_factors.append(f"স্থানীয় জাতের ফলন সক্ষমতা সীমিত ({variety_code})")
+
     # Salinity mismatch alert
     is_coastal = any(r.lower() in region.lower() for r in SALINE_BELT_REGIONS)
     if is_coastal and stress_tolerance != "Saline":
@@ -141,7 +149,7 @@ def calculate_risk_and_alerts(
     is_drought_zone = any(r.lower() in region.lower() for r in DROUGHT_PRONE_REGIONS)
     if is_drought_zone and stress_tolerance != "Drought" and crop.lower() in ["rice", "wheat"]:
         risk_score += 15.0
-        risk_factors.append(f"বরেন্দ্র/উত্তরাঞ্চলের খরা প্রবণ অঞ্চলে সেচ সংকট ঝুঁকি")
+        risk_factors.append("বরেন্দ্র/উত্তরাঞ্চলের খরা প্রবণ অঞ্চলে সেচ সংকট ঝুঁকি")
         alerts.append({
             "id": "alert-drought-irrigation",
             "category": "moisture",
@@ -151,7 +159,7 @@ def calculate_risk_and_alerts(
             "title_en": "Moisture Deficit & Irrigation Alert",
             "description": f"{region} অঞ্চলে ভূগর্ভস্থ পানির স্তর দ্রুত নামতে পারে। ফুল আসার সময় পানির অভাব হলে দানা চিটা হতে পারে।",
             "description_bn": f"{region} অঞ্চলে ভূগর্ভস্থ পানির স্তর দ্রুত নামতে পারে। ফুল আসার সময় পানির অভাব হলে দানা চিটা হতে পারে।",
-            "description_en": f"Barind/Northern belt prone to water table stress. Water shortage during flowering causes unfilled grains.",
+            "description_en": "Barind/Northern belt prone to water table stress. Water shortage during flowering causes unfilled grains.",
             "action_bn": "এডব্লিউডি (AWD - পর্যায়ক্রমে ভিজানো ও শুকানো) পদ্ধতিতে সাশ্রয়ী সেচ নিশ্চিত করুন।",
             "action_en": "Adopt Alternate Wetting and Drying (AWD) irrigation technology.",
         })
@@ -168,7 +176,7 @@ def calculate_risk_and_alerts(
             "title_en": "Early Haor Flash-Flood Caution",
             "description": f"{region} অঞ্চলে বৈশাখ মাসে আগাম পাহাড়ি ঢলের ঝুঁকি থাকে। স্বল্পমেয়াদী জাত আবাদ করে আগাম কর্তন জরুরি।",
             "description_bn": f"{region} অঞ্চলে বৈশাখ মাসে আগাম পাহাড়ি ঢলের ঝুঁকি থাকে। স্বল্পমেয়াদী জাত আবাদ করে আগাম কর্তন জরুরি।",
-            "description_en": f"Haor belt vulnerable to flash floods from upstream. Timely harvesting is critical.",
+            "description_en": "Haor belt vulnerable to flash floods from upstream. Timely harvesting is critical.",
             "action_bn": "ধানের ৮০% সোনালী রং ধারণ করলেই দ্রুত কেটে নিরাপদ স্থানে সংরক্ষণ করুন।",
             "action_en": "Harvest when 80% of grains reach golden maturity to preempt flood inundation.",
         })
@@ -178,17 +186,21 @@ def calculate_risk_and_alerts(
     veg_status = "স্বাভাবিক"
     if db:
         try:
+            canonical_region = normalize_region_name(region)
             ndvi_entry = (
                 db.query(NDVICache)
-                .filter(NDVICache.region_name.ilike(region.strip()))
+                .filter(
+                    (NDVICache.region_name.ilike(canonical_region))
+                    | (NDVICache.region_name.ilike(region.strip()))
+                )
                 .order_by(NDVICache.computed_at.desc())
                 .first()
             )
             if ndvi_entry and ndvi_entry.ndvi_value is not None:
                 ndvi_val = ndvi_entry.ndvi_value
                 veg_status = ndvi_entry.vegetation_status or "স্বাভাবিক"
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Warning: NDVI lookup error in risk_service: {e}")
 
     if ndvi_val is not None:
         if ndvi_val < 0.32:
@@ -208,7 +220,94 @@ def calculate_risk_and_alerts(
                 "action_en": "Inspect leaves for fungal blight/blast; supplement with micronutrient zinc and sulfur.",
             })
 
-    # 5. Crop-specific default pest alert if none generated yet
+    # 5. Simulated Rainfall & Temperature Anomaly Evaluation
+    temp_shift_c = temperature_adjustment_percent / 10.0
+    if rainfall_adjustment_percent <= -20.0:
+        risk_score += min(30.0, abs(rainfall_adjustment_percent) * 0.6)
+        risk_factors.append(f"সিমুলেশন খরা পরিস্থিতি (বৃষ্টিপাত {rainfall_adjustment_percent:+.0f}%)")
+        alerts.append({
+            "id": "alert-sim-drought",
+            "category": "moisture",
+            "level": "high" if rainfall_adjustment_percent <= -35.0 else "medium",
+            "title": f"বৃষ্টিপাত ঘাটতি ও খরা ঝুঁকি ({rainfall_adjustment_percent:+.0f}%)",
+            "title_bn": f"বৃষ্টিপাত ঘাটতি ও খরা ঝুঁকি ({rainfall_adjustment_percent:+.0f}%)",
+            "title_en": f"Simulated Rainfall Deficit Alert ({rainfall_adjustment_percent:+.0f}%)",
+            "description": f"বৃষ্টিপাত {abs(rainfall_adjustment_percent):.0f}% কমে গেলে মাটির আর্দ্রতা দ্রুত হ্রাস পাবে এবং দানা গঠনে ব্যাঘাত ঘটবে।",
+            "description_bn": f"বৃষ্টিপাত {abs(rainfall_adjustment_percent):.0f}% কমে গেলে মাটির আর্দ্রতা দ্রুত হ্রাস পাবে এবং দানা গঠনে ব্যাঘাত ঘটবে।",
+            "description_en": f"A {abs(rainfall_adjustment_percent):.0f}% rainfall deficit causes severe root-zone moisture stress.",
+            "action_bn": "সপ্তাহে অন্তত ২ বার সম্পূরক সেচ দিন এবং মালচিং পদ্ধতিতে মাটির রস সংরক্ষণ করুন।",
+            "action_en": "Schedule supplementary irrigation twice weekly and apply mulching.",
+        })
+    elif rainfall_adjustment_percent >= 25.0:
+        risk_score += min(25.0, rainfall_adjustment_percent * 0.5)
+        risk_factors.append(f"অতিবৃষ্টি ও জলাবদ্ধতা ঝুঁকি (বৃষ্টিপাত {rainfall_adjustment_percent:+.0f}%)")
+        alerts.append({
+            "id": "alert-sim-flood",
+            "category": "climate",
+            "level": "high" if rainfall_adjustment_percent >= 40.0 else "medium",
+            "title": f"অতিবৃষ্টি ও জলাবদ্ধতা সতর্কতা ({rainfall_adjustment_percent:+.0f}%)",
+            "title_bn": f"অতিবৃষ্টি ও জলাবদ্ধতা সতর্কতা ({rainfall_adjustment_percent:+.0f}%)",
+            "title_en": f"Excess Rainfall & Waterlogging Alert ({rainfall_adjustment_percent:+.0f}%)",
+            "description": f"অতিরিক্ত বৃষ্টিপাতের ({rainfall_adjustment_percent:+.0f}%) কারণে শিকড় পচা ও ছত্রাকজনিত রোগের প্রাদুর্ভাব বাড়তে পারে।",
+            "description_bn": f"অতিরিক্ত বৃষ্টিপাতের ({rainfall_adjustment_percent:+.0f}%) কারণে শিকড় পচা ও ছত্রাকজনিত রোগের প্রাদুর্ভাব বাড়তে পারে।",
+            "description_en": f"Excess rainfall ({rainfall_adjustment_percent:+.0f}%) increases waterlogging and fungal root rot risk.",
+            "action_bn": "জমির নিষ্কাশন নালা দ্রুত পরিষ্কার করুন এবং অতিরিক্ত পানি বের করে দিন।",
+            "action_en": "Clear field drainage channels immediately to prevent standing water.",
+        })
+
+    if temp_shift_c >= 1.5:
+        risk_score += min(28.0, temp_shift_c * 5.5)
+        risk_factors.append(f"তাপমাত্রা বৃদ্ধি ও হিট স্ট্রেস ({temp_shift_c:+.1f}°C)")
+        alerts.append({
+            "id": "alert-sim-heat",
+            "category": "climate",
+            "level": "high" if temp_shift_c >= 3.0 else "medium",
+            "title": f"তাপপ্রবাহ ও হিট শক ঝুঁকি ({temp_shift_c:+.1f}°C)",
+            "title_bn": f"তাপপ্রবাহ ও হিট শক ঝুঁকি ({temp_shift_c:+.1f}°C)",
+            "title_en": f"Heat Wave & Thermal Stress Alert ({temp_shift_c:+.1f}°C)",
+            "description": f"তাপমাত্রা {temp_shift_c:+.1f}°সে বৃদ্ধি পেলে পরাগায়ন ব্যাহত হয় এবং চিটা ধানের/দানার হার বেড়ে যায়।",
+            "description_bn": f"তাপমাত্রা {temp_shift_c:+.1f}°সে বৃদ্ধি পেলে পরাগায়ন ব্যাহত হয় এবং চিটা ধানের/দানার হার বেড়ে যায়।",
+            "description_en": f"A +{temp_shift_c:.1f}°C temperature rise induces spikelet sterility and thermal stress.",
+            "action_bn": "জমিতে ২-৩ ইঞ্চি পানি ধরে রাখুন এবং বিকেলে পটাশিয়াম নাইট্রেট স্প্রে করুন।",
+            "action_en": "Maintain 2-3 inches of standing water and apply foliar potassium spray in late afternoon.",
+        })
+
+    # 6. Crawled Ground Incidents & News Alerts from n8n / Webhook
+    if db:
+        try:
+            recent_news = (
+                db.query(AgriAlert)
+                .filter(
+                    (AgriAlert.district.ilike(canonical_region))
+                    | (AgriAlert.district.ilike(region.strip()))
+                    | (AgriAlert.district == "National")
+                )
+                .order_by(AgriAlert.crawled_at.desc())
+                .limit(2)
+                .all()
+            )
+            for news in recent_news:
+                is_high_risk = news.risk_tag in ["Fertilizer Shortage", "Weather Extreme", "Pest/Disease"]
+                risk_inc = 15.0 if is_high_risk else 5.0
+                risk_score += risk_inc
+                risk_factors.append(f"সাম্প্রতিক ফিল্ড সংবাদ: {news.title} ({news.risk_tag})")
+                alerts.append({
+                    "id": f"alert-crawled-{news.id}",
+                    "category": "market" if news.risk_tag == "Market Trend" else "pest" if news.risk_tag == "Pest/Disease" else "climate",
+                    "level": "high" if is_high_risk else "medium",
+                    "title": f"🚨 ফিল্ড সংবাদ সতর্কতা: {news.title}",
+                    "title_bn": f"🚨 ফিল্ড সংবাদ সতর্কতা: {news.title}",
+                    "title_en": f"🚨 Live Ground Incident Alert: {news.title}",
+                    "description": news.summary or news.title,
+                    "description_bn": news.summary or news.title,
+                    "description_en": news.summary or news.title,
+                    "action_bn": f"উৎস বিস্তারিত দেখুন: {news.source_url}",
+                    "action_en": f"View source article: {news.source_url}",
+                })
+        except Exception as e:
+            print(f"Warning: AgriAlert lookup error in risk_service: {e}")
+
+    # 7. Crop-specific default pest alert if none generated yet
     if not any(a["category"] == "pest" for a in alerts):
         pest_title_map = {
             "Rice": ("মাজরা পোকা ও নেক ব্লাস্ট পর্যবেক্ষণ", "Stem Borer & Neck Blast Vigilance"),
@@ -226,8 +325,8 @@ def calculate_risk_and_alerts(
             "title": title_bn,
             "title_bn": title_bn,
             "title_en": title_en,
-            "description": f"আবহাওয়ার পরিবর্তনের ফলে হালকা বালাইয়ের সম্ভাবনা রয়েছে। আলোর ফাঁদ ব্যবহার করুন।",
-            "description_bn": f"আবহাওয়ার পরিবর্তনের ফলে হালকা বালাইয়ের সম্ভাবনা রয়েছে। আলোর ফাঁদ ব্যবহার করুন।",
+            "description": "আবহাওয়ার পরিবর্তনের ফলে হালকা বালাইয়ের সম্ভাবনা রয়েছে। আলোর ফাঁদ ব্যবহার করুন।",
+            "description_bn": "আবহাওয়ার পরিবর্তনের ফলে হালকা বালাইয়ের সম্ভাবনা রয়েছে। আলোর ফাঁদ ব্যবহার করুন।",
             "description_en": "Seasonal atmospheric humidity may harbor minor pest infestations. Install light traps.",
             "action_bn": "সপ্তাহে দুই দিন সকালে ফসল পরিদর্শন করুন এবং প্রয়োজনে জৈব বালাইনাশক ব্যবহার করুন।",
             "action_en": "Scout fields twice weekly in morning hours; use biological control where possible.",

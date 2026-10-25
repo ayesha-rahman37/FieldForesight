@@ -34,6 +34,11 @@ export const loginUser = async (username: string, password: string): Promise<Log
   return response.data;
 };
 
+export const googleOAuthLogin = async (credential: string): Promise<LoginResponse> => {
+  const response = await api.post<LoginResponse>('/api/auth/oauth/google', { credential });
+  return response.data;
+};
+
 export const getMe = async (): Promise<User> => {
   const response = await api.get<User>('/api/auth/me');
   return response.data;

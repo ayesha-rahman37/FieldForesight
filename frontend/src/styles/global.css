@@ -3,10 +3,13 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
 
   --color-brand-50: #ecfdf5;
   --color-brand-100: #d1fae5;
   --color-brand-200: #b1eed3;
+  --color-brand-300: #86efac;
+  --color-brand-400: #4ade80;
   --color-brand-500: #10b981;
   --color-brand-600: #059669;
   --color-brand-700: #047857;
@@ -34,6 +37,19 @@
   --color-warm-100: #F4F1EA;
   --color-warm-200: #E8E3D7;
   --color-warm-300: #D5CDBF;
+
+  --animate-in: in 0.2s ease-out;
+  --animate-slide-in-from-top: slideInFromTop 0.2s ease-out;
+
+  @keyframes in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideInFromTop {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 }
 
 :root {
@@ -60,13 +76,13 @@
 }
 
 body {
-  font-family: 'Inter', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--bg-sand);
   -webkit-font-smoothing: antialiased;
 }
 
 button, input, select {
-  font-family: 'Inter', 'Noto Sans Bengali', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .max-container {
@@ -99,4 +115,41 @@ button, input, select {
   background: linear-gradient(90deg, #E5E1D5 25%, #F0EDE4 50%, #E5E1D5 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite linear;
+}
+
+.caption {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #5A6E69;
+}
+
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image:
+    linear-gradient(to right, rgba(6, 78, 59, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(6, 78, 59, 0.04) 1px, transparent 1px);
+}
+
+.btn-glow:hover {
+  box-shadow: 0 10px 25px -5px rgba(6, 95, 70, 0.35);
+}
+
+/* Modern Sleek Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }

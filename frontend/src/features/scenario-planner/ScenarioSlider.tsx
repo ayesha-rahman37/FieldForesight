@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '../../components/common/Card';
-import { runScenario } from '../../api/scenario';
+import { runScenario, streamScenario } from '../../api/scenario';
 import { useLanguage } from '../../context/LanguageContext';
+import { CONFIG } from '../../config';
 import type { ScenarioResponse } from './types';
 
 interface ScenarioSliderProps {
@@ -25,33 +26,99 @@ export const ScenarioSlider: React.FC<ScenarioSliderProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef<number>(0);
+  const activeRequestKeyRef = useRef<string>('');
 
   const isSliderActive = rainfallAdj !== 0 || tempAdj !== 0;
 
   const fetchScenarioResult = async (rf: number, temp: number) => {
+    // Abort previous in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
     const currentReqId = ++requestIdRef.current;
+    const reqKey = `${rf}_${temp}_${crop}_${region}_${variety}_${cropping_type}_${currentReqId}`;
+    activeRequestKeyRef.current = reqKey;
+
     setLoading(true);
     setError(null);
-    try {
-      const res = await runScenario({
-        crop,
-        region,
-        variety,
-        cropping_type,
-        rainfall_adjustment_percent: rf,
-        temperature_adjustment_percent: temp,
-      });
-      if (currentReqId === requestIdRef.current) {
-        setResult(res);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    if (CONFIG.SCENARIO_STREAMING) {
+      try {
+        await streamScenario(
+          {
+            crop,
+            region,
+            variety,
+            cropping_type,
+            rainfall_adjustment_percent: rf,
+            temperature_adjustment_percent: temp,
+          },
+          (event) => {
+            if (activeRequestKeyRef.current !== reqKey) return;
+
+            if (event.type === 'result') {
+              setResult({
+                original_yield: event.original_yield,
+                adjusted_yield: event.adjusted_yield,
+                lower_bound: event.lower_bound,
+                upper_bound: event.upper_bound,
+                adjustment_applied: event.adjustment_applied,
+                message: event.message,
+              });
+              setError(null);
+            } else if (event.type === 'error') {
+              setError(event.message || t('সিনারিও গণনা করতে ব্যর্থ হয়েছে', 'Failed to recalculate scenario'));
+            }
+          },
+          controller.signal
+        );
+      } catch (err: any) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        if (activeRequestKeyRef.current === reqKey) {
+          setError(t('সিনারিও গণনা করতে ব্যর্থ হয়েছে', 'Failed to recalculate scenario'));
+        }
+      } finally {
+        if (activeRequestKeyRef.current === reqKey) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      if (currentReqId === requestIdRef.current) {
-        setError(t('সিনারিও গণনা করতে ব্যর্থ হয়েছে', 'Failed to recalculate scenario'));
-      }
-    } finally {
-      if (currentReqId === requestIdRef.current) {
-        setLoading(false);
+    } else {
+      // Fallback REST call (with instant network cancellation via AbortSignal)
+      try {
+        const res = await runScenario(
+          {
+            crop,
+            region,
+            variety,
+            cropping_type,
+            rainfall_adjustment_percent: rf,
+            temperature_adjustment_percent: temp,
+          },
+          controller.signal
+        );
+        if (activeRequestKeyRef.current === reqKey) {
+          setResult(res);
+        }
+      } catch (err: any) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        if (activeRequestKeyRef.current === reqKey) {
+          setError(t('সিনারিও গণনা করতে ব্যর্থ হয়েছে', 'Failed to recalculate scenario'));
+        }
+      } finally {
+        if (activeRequestKeyRef.current === reqKey) {
+          setLoading(false);
+        }
       }
     }
   };
@@ -68,6 +135,9 @@ export const ScenarioSlider: React.FC<ScenarioSliderProps> = ({
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, [rainfallAdj, tempAdj, crop, region, variety, cropping_type]);
@@ -262,6 +332,7 @@ export const ScenarioSlider: React.FC<ScenarioSliderProps> = ({
               alignItems: 'center',
               gap: '16px',
               transition: 'opacity 0.2s ease',
+              opacity: loading ? 0.45 : 1,
             }}
           >
             {/* Original Yield Block */}
@@ -317,6 +388,7 @@ export const ScenarioSlider: React.FC<ScenarioSliderProps> = ({
             border: '1px solid #D8D3C5',
             padding: '18px 20px',
             transition: 'opacity 0.3s ease',
+            opacity: loading ? 0.45 : 1,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
@@ -336,11 +408,13 @@ export const ScenarioSlider: React.FC<ScenarioSliderProps> = ({
               {/* Compact inline confidence range text */}
               <div style={{ fontSize: '12px', color: '#5A6E69', display: 'flex', gap: '12px', borderTop: '1px solid #D8D3C5', paddingTop: '8px', marginTop: '2px' }}>
                 <span>
-                  <strong>{t('সর্বনিম্ন:', 'Min:')}</strong> {result.lower_bound.toFixed(2)} {t('টন/হেক্টর', 'tons/ha')}
+                  <strong>{t('সর্বনিম্ন:', 'Min:')}</strong>
+                  <span> {result.lower_bound.toFixed(2)} {t('টন/হেক্টর', 'tons/ha')}</span>
                 </span>
                 <span>•</span>
                 <span>
-                  <strong>{t('সর্বোচ্চ:', 'Max:')}</strong> {result.upper_bound.toFixed(2)} {t('টন/হেক্টর', 'tons/ha')}
+                  <strong>{t('সর্বোচ্চ:', 'Max:')}</strong>
+                  <span> {result.upper_bound.toFixed(2)} {t('টন/হেক্টর', 'tons/ha')}</span>
                 </span>
               </div>
             </div>

@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Frontend (Deploy frontend separately on Vercel)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+
+# Testing & Artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.gemini/
+brain/
+scratch/
+*.log
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+

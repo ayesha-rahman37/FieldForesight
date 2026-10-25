@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { registerUser } from '../api/auth';
+import { RealGoogleSignInButton } from '../components/auth/RealGoogleSignInButton';
+import { validateEmail, translateAuthError } from '../utils/emailValidator';
 
 export const SignupPage: React.FC = () => {
   const { login } = useAuth();
@@ -29,6 +31,11 @@ export const SignupPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailValidation = validateEmail(form.email, language as 'bn' | 'en');
+    if (!emailValidation.isValid) {
+      setError(emailValidation.error || t('একটি সঠিক ইমেইল প্রদান করুন', 'Please enter a valid email address'));
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       setError(t("পাসওয়ার্ড দুটি মেলেনি", "Passwords do not match"));
       return;
@@ -70,20 +77,8 @@ export const SignupPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen text-slate-800 bg-grid-pattern flex flex-col justify-between selection:bg-emerald-200 selection:text-emerald-950" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', backgroundColor: '#F8F9F5' }}>
-      <style>{`
-        .bg-grid-pattern {
-          background-size: 32px 32px;
-          background-image: 
-            linear-gradient(to right, rgba(6, 78, 59, 0.04) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(6, 78, 59, 0.04) 1px, transparent 1px);
-        }
-        .btn-glow:hover {
-          box-shadow: 0 10px 25px -5px rgba(6, 95, 70, 0.35);
-        }
-      `}</style>
+    <div className="min-h-screen text-slate-800 bg-grid-pattern flex flex-col justify-between selection:bg-emerald-200 selection:text-emerald-950" style={{ fontFamily: 'var(--font-sans)', backgroundColor: '#F8F9F5' }}>
       
-      {/* BEGIN: MainHeader */}
       <header className="w-full bg-white/80 backdrop-blur-md border-b border-emerald-900/10 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -103,11 +98,6 @@ export const SignupPage: React.FC = () => {
               </div>
             </Link>
           </div>
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-            <Link className="hover:text-emerald-800 transition-colors" to="/">{t('হোম', 'Home')}</Link>
-            <Link className="hover:text-emerald-800 transition-colors" to="/dashboard">{t('ফলন ইনসাইটস', 'Yield Insights')}</Link>
-            <Link className="hover:text-emerald-800 transition-colors" to="/security">{t('নিরাপত্তা ও ডকুমেন্টস', 'Security & Docs')}</Link>
-          </nav>
           <div className="flex items-center gap-3 sm:gap-4">
             <button onClick={toggleLanguage} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-950 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg shadow-sm transition cursor-pointer" type="button">
               <svg className="w-4 h-4 text-emerald-700 shrink-0" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,16 +108,10 @@ export const SignupPage: React.FC = () => {
             <Link className="px-5 py-2 text-sm font-semibold text-emerald-950 hover:text-emerald-700 transition" to="/login">
               {t('সাইন ইন', 'Sign In')}
             </Link>
-            <button className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M4 6h16M4 12h16m-7 6h7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-              </svg>
-            </button>
           </div>
         </div>
       </header>
 
-      {/* BEGIN: MainContentArea */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 w-full flex items-center justify-center">
         <div className="w-full bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-100 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[720px]">
           
@@ -210,20 +194,12 @@ export const SignupPage: React.FC = () => {
 
               {error && (
                 <div className="mb-4 p-3 bg-rose-50 text-rose-600 text-sm rounded-xl border border-rose-100 font-medium">
-                  {error}
+                  {translateAuthError(error, language)}
                 </div>
               )}
 
               <div className="mb-6">
-                <button className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm cursor-pointer" type="button">
-                  <svg className="w-5 h-5 shrink-0" width="20" height="20" viewBox="0 0 24 24">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"></path>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"></path>
-                  </svg>
-                  {t('গুগল দিয়ে শুরু করুন', 'Continue with Google')}
-                </button>
+                <RealGoogleSignInButton onError={(msg) => setError(msg)} />
                 <div className="relative flex items-center justify-center my-6">
                   <div className="border-t border-slate-200 w-full"></div>
                   <span className="bg-white px-3 text-xs text-slate-400 uppercase tracking-wider font-medium">{t('অথবা ইমেইল দিয়ে নিবন্ধন করুন', 'Or register with email')}</span>
@@ -331,14 +307,14 @@ export const SignupPage: React.FC = () => {
                     </div>
                     <select className="block w-full pl-11 pr-10 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-700 focus:border-brand-700 transition text-slate-700" id="region" name="region" value={form.region} onChange={update('region')}>
                       <option disabled value="">{t('আপনার কৃষি অঞ্চল নির্বাচন করুন', 'Select your farming region')}</option>
-                      <option value="রাজশাহী">{t('রাজশাহী বিভাগ (উচ্চ বরেন্দ্র অঞ্চল)', 'Rajshahi Division (High Barind Tract)')}</option>
-                      <option value="রংপুর">{t('রংপুর বিভাগ (তিস্তা প্লাবনভূমি)', 'Rangpur Division (Teesta Floodplain)')}</option>
-                      <option value="ঢাকা">{t('ঢাকা বিভাগ (মধুপুর গড়)', 'Dhaka Division (Madhupur Tract)')}</option>
-                      <option value="খুলনা">{t('খুলনা বিভাগ (উপকূলীয় লবণাক্ত অঞ্চল)', 'Khulna Division (Coastal Saline Zone)')}</option>
-                      <option value="সিলেট">{t('সিলেট বিভাগ (হাওর অববাহিকা)', 'Sylhet Division (Haor Basin / Surma)')}</option>
-                      <option value="ময়মনসিংহ">{t('ময়মনসিংহ বিভাগ (পুরাতন ব্রহ্মপুত্র)', 'Mymensingh Division (Old Brahmaputra)')}</option>
-                      <option value="চট্টগ্রাম">{t('চট্টগ্রাম বিভাগ (পার্বত্য চট্টগ্রাম)', 'Chattogram Division (Chittagong Hills)')}</option>
-                      <option value="বরিশাল">{t('বরিশাল বিভাগ (গঙ্গা জোয়ার-ভাটা)', 'Barishal Division (Ganges Tidal)')}</option>
+                      <option value="Rajshahi">{t('রাজশাহী বিভাগ (উচ্চ বরেন্দ্র অঞ্চল)', 'Rajshahi Division (High Barind Tract)')}</option>
+                      <option value="Rangpur">{t('রংপুর বিভাগ (তিস্তা প্লাবনভূমি)', 'Rangpur Division (Teesta Floodplain)')}</option>
+                      <option value="Dhaka">{t('ঢাকা বিভাগ (মধুপুর গড়)', 'Dhaka Division (Madhupur Tract)')}</option>
+                      <option value="Khulna">{t('খুলনা বিভাগ (উপকূলীয় লবণাক্ত অঞ্চল)', 'Khulna Division (Coastal Saline Zone)')}</option>
+                      <option value="Sylhet">{t('সিলেট বিভাগ (হাওর অববাহিকা)', 'Sylhet Division (Haor Basin / Surma)')}</option>
+                      <option value="Mymensingh">{t('ময়মনসিংহ বিভাগ (পুরাতন ব্রহ্মপুত্র)', 'Mymensingh Division (Old Brahmaputra)')}</option>
+                      <option value="Chattogram">{t('চট্টগ্রাম বিভাগ (পার্বত্য চট্টগ্রাম)', 'Chattogram Division (Chittagong Hills)')}</option>
+                      <option value="Barishal">{t('বরিশাল বিভাগ (গঙ্গা জোয়ার-ভাটা)', 'Barishal Division (Ganges Tidal)')}</option>
                     </select>
                   </div>
                 </div>
@@ -347,9 +323,9 @@ export const SignupPage: React.FC = () => {
                   <input className="h-4 w-4 mt-0.5 rounded border-slate-300 text-brand-800 focus:ring-brand-700 cursor-pointer" id="terms" name="terms" required type="checkbox"/>
                   <label className="ml-2 block text-xs text-slate-600 leading-tight cursor-pointer" htmlFor="terms">
                     {t('আমি সম্মত হচ্ছি ', 'I agree to the ')}
-                    <Link className="font-semibold text-brand-800 hover:underline" to="#">{t('সেবার শর্তাবলী', 'Terms of Service')}</Link>
+                    <Link className="font-semibold text-brand-800 hover:underline" to="/security">{t('সেবার শর্তাবলী', 'Terms of Service')}</Link>
                     {t(', তথ্য চুক্তি এবং ', ', data telemetry agreement, and ')}
-                    <Link className="font-semibold text-brand-800 hover:underline" to="#">{t('গোপনীয়তা নীতি', 'Privacy Policy')}</Link>.
+                    <Link className="font-semibold text-brand-800 hover:underline" to="/security">{t('গোপনীয়তা নীতি', 'Privacy Policy')}</Link>.
                   </label>
                 </div>
 
@@ -374,7 +350,6 @@ export const SignupPage: React.FC = () => {
         </div>
       </main>
 
-      {/* BEGIN: SiteFooter */}
       <footer className="w-full py-6 border-t border-slate-200/70 text-slate-500 text-xs mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -384,7 +359,7 @@ export const SignupPage: React.FC = () => {
           <div className="flex items-center gap-6">
             <Link className="hover:text-brand-900 transition" to="/security">{t('প্রাইভেসি শিল্ড', 'Privacy Shield')}</Link>
             <Link className="hover:text-brand-900 transition" to="/security">{t('এপিআই ডকুমেন্টস', 'API Documentation')}</Link>
-            <Link className="hover:text-brand-900 transition" to="#">{t('কৃষক সহায়তা হেল্পলাইন', 'Farmer Support Helpline')}</Link>
+            <a href="tel:16123" className="hover:text-brand-900 transition">{t('কৃষক সহায়তা হেল্পলাইন', 'Farmer Support Helpline')}</a>
           </div>
         </div>
       </footer>

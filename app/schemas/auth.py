@@ -1,11 +1,11 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
-    username: str
+    username: str = Field(..., min_length=2, max_length=50)
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=4, max_length=128)
     region: Optional[str] = None
 
 
@@ -14,7 +14,13 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class GoogleOAuthRequest(BaseModel):
+    credential: str = Field(..., description="Google ID Token JWT or Authorization Code")
+
+
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     username: str
     email: EmailStr
@@ -22,8 +28,6 @@ class UserResponse(BaseModel):
     role: str = "farmer"
     is_active: bool
 
-    class Config:
-        from_attributes = True
 
 class TokenResponse(BaseModel):
     access_token: str

@@ -5,6 +5,7 @@ Seed script for Samir module:
 """
 
 from app.database import SessionLocal, engine, Base
+import app.models  # noqa: F401
 from app.models.risk_threshold import RiskThreshold
 from app.models.crop_variety import CropVariety
 
@@ -93,6 +94,18 @@ DEFAULT_THRESHOLDS = [
         "unit": "ton/ha",
         "description_bn": "পাটের আঁশের স্বাভাবিক ফলন থ্রেশহোল্ড (টন/হেক্টর)",
         "description_en": "Standard baseline yield threshold for Jute (ton/ha)",
+    },
+    # Lentil thresholds
+    {
+        "crop": "Lentil",
+        "region": "All",
+        "metric": "predicted_yield_min",
+        "low_threshold": 1.3,
+        "medium_threshold": 1.0,
+        "high_threshold": 0.75,
+        "unit": "ton/ha",
+        "description_bn": "মসুর ডালের স্বাভাবিক ফলন থ্রেশহোল্ড (টন/হেক্টর)",
+        "description_en": "Standard baseline yield threshold for Lentil (ton/ha)",
     },
     # General NDVI Threshold
     {
@@ -488,11 +501,46 @@ DEFAULT_VARIETIES = [
         "description_en": "Indigenous white jute variety.",
         "is_recommended": False,
     },
+    # ================= LENTIL VARIETIES =================
+    {
+        "crop": "Lentil",
+        "variety_code": "BARI_MASUR_8",
+        "name_en": "BARI Masur-8 (HYV)",
+        "name_bn": "বারি মসুর-৮ (উফশী)",
+        "variety_type": "HYV",
+        "yield_coefficient": 1.08,
+        "potential_yield_min": 1.6,
+        "potential_yield_max": 2.2,
+        "maturity_days": 105,
+        "season": "Rabi",
+        "stress_tolerance": "Drought",
+        "description_bn": "স্টেমফাইলিয়াম ব্লাইট ও মরিচা রোগ প্রতিরোধী উচ্চ ফলনশীল মসুর জাত।",
+        "description_en": "Stemphylium blight and rust resistant high-yielding lentil variety.",
+        "is_recommended": True,
+    },
+    {
+        "crop": "Lentil",
+        "variety_code": "LOCAL",
+        "name_en": "Local Deshi Masur",
+        "name_bn": "স্থানীয় দেশি মসুর",
+        "variety_type": "Local",
+        "yield_coefficient": 0.85,
+        "potential_yield_min": 0.8,
+        "potential_yield_max": 1.2,
+        "maturity_days": 115,
+        "season": "Rabi",
+        "stress_tolerance": "Standard",
+        "description_bn": "প্রচলিত দেশি মসুর ডালের জাত।",
+        "description_en": "Traditional local lentil variety.",
+        "is_recommended": False,
+    },
 ]
 
 
-def seed_samir_data():
-    db = SessionLocal()
+def seed_samir_data(db=None):
+    own_session = db is None
+    if own_session:
+        db = SessionLocal()
     try:
         # 1. Seed Risk Thresholds
         threshold_count = 0
@@ -538,13 +586,13 @@ def seed_samir_data():
                 existing.description_bn = item["description_bn"]
 
         db.commit()
-        print(f"Seeded {threshold_count} risk thresholds and {variety_count} crop varieties successfully.")
     except Exception as e:
         db.rollback()
         print(f"Error seeding Samir data: {e}")
         raise
     finally:
-        db.close()
+        if own_session:
+            db.close()
 
 
 if __name__ == "__main__":

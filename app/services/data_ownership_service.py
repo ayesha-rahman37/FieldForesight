@@ -1,127 +1,159 @@
 """
 Data-ownership service.
 
-get_user_data  — queries real User, PredictionHistory, and UserPreference
-                 tables instead of returning hardcoded mock values.
-
-delete_data    — accepts a DeleteRequest object (not a plain str) and
-                 performs a real DB delete/soft-delete depending on
-                 data_type, then returns True/False for the route to
-                 translate into a DeleteResponse.
+get_user_data  — queries real User, Role, PredictionHistory, and UserPreference tables.
+delete_data    — deletes user data by data_type ("prediction_history" / "predictions",
+                 "preferences", "profile", or "all").
 """
 
 from sqlalchemy.orm import Session
 
-from app.models.user import User
+from app.models.advisory_history import AdvisoryHistory
+from app.models.explainability_cache import ExplainabilityCache
 from app.models.prediction_history import PredictionHistory
+from app.models.role import Role
+from app.models.session import UserSession
+from app.models.user import User
 from app.models.user_preference import UserPreference
 from app.schemas.data_ownership_schema import (
+    DeleteRequest,
+    PredictionHistoryItem,
     UserData,
     UserProfileData,
-    PredictionHistoryItem,
-    DeleteRequest,
 )
 
 
-def get_user_data(user_id: int, db: Session) -> UserData:
-    # ── Profile ───────────────────────────────────────────────────────────────
-    user = db.query(User).filter(User.id == user_id).first()
-
+def get_user_data(user_id: int | None, db: Session) -> UserData:
+    user = db.query(User).filter(User.id == user_id).first() if user_id is not None else None
     pref = (
         db.query(UserPreference)
         .filter(UserPreference.user_id == user_id)
         .first()
+        if user_id is not None
+        else None
     )
+
+    role_name = "farmer"
+    if user and user.role_id:
+        role = db.query(Role).filter(Role.id == user.role_id).first()
+        if role:
+            role_name = role.name
 
     if user:
         profile = UserProfileData(
             name=user.username,
-            phone="",           # phone column not on User model yet
+            username=user.username,
+            email=user.email,
+            role=role_name,
+            phone=user.email,
             region=pref.last_region if (pref and pref.last_region) else "",
+            created_at=user.created_at.strftime("%Y-%m-%d") if user.created_at else "",
         )
     else:
-        profile = UserProfileData(name="Unknown", phone="", region="")
+        profile = UserProfileData(
+            name="Guest Farmer",
+            username="guest",
+            email="",
+            role="guest",
+            phone="",
+            region=pref.last_region if (pref and pref.last_region) else "",
+            created_at="",
+        )
 
-    # ── Prediction history ────────────────────────────────────────────────────
+    if user_id is not None:
+        history_filter = PredictionHistory.user_id == user_id
+    else:
+        history_filter = PredictionHistory.user_id.is_(None)
+
+    total_predictions = db.query(PredictionHistory).filter(history_filter).count()
+
     history_rows = (
         db.query(PredictionHistory)
-        .filter(
-            (PredictionHistory.user_id == user_id) | (PredictionHistory.user_id == None)
-        )
+        .filter(history_filter)
         .order_by(PredictionHistory.created_at.desc())
-        .limit(20)
+        .limit(50)
         .all()
     )
 
     prediction_history = [
         PredictionHistoryItem(
             prediction_id=str(row.id),
-            date=row.created_at.strftime("%Y-%m-%d") if row.created_at else "",
+            date=row.created_at.strftime("%Y-%m-%d %H:%M") if row.created_at else "",
             crop=row.crop,
             region=row.region,
-            yield_predicted=f"{row.predicted_yield:.2f} ton/hectare",
+            variety=row.variety or "HYV",
+            yield_predicted=f"{row.predicted_yield:.2f} ton/ha",
+            lower_bound=row.lower_bound,
+            upper_bound=row.upper_bound,
         )
         for row in history_rows
     ]
 
-    # ── Saved preferences ─────────────────────────────────────────────────────
-    saved_preference = {
-        "last_crop":   pref.last_crop   if pref else None,
-        "last_region": pref.last_region if pref else None,
-    }
+    saved_preference = {}
+    preferences_count = 0
+    if pref and (pref.last_crop or pref.last_region):
+        saved_preference = {
+            "last_crop": pref.last_crop,
+            "last_region": pref.last_region,
+            "updated_at": pref.updated_at.strftime("%Y-%m-%d") if pref.updated_at else "",
+        }
+        preferences_count = 1
 
     return UserData(
         profile=profile,
         prediction_history=prediction_history,
+        prediction_count=total_predictions,
         saved_preference=saved_preference,
+        preferences_count=preferences_count,
     )
 
 
-def delete_data(request: DeleteRequest, user_id: int, db: Session) -> bool:
+def delete_data(request: DeleteRequest, user_id: int | None, db: Session) -> bool:
     """
-    Deletes user data by data_type.
-
-    Supported data_type values:
-      "predictions" / "prediction_history" — hard-delete PredictionHistory rows for user_id
-      "preferences"                        — hard-delete UserPreference row for user_id
-      "profile"                            — clear saved profile preferences for user_id
+    Deletes user data by data_type:
+      "prediction_history" / "predictions" — delete PredictionHistory rows & explainability caches
+      "preferences"                        — delete UserPreference row for user_id
+      "profile"                            — delete entire User account, sessions, preferences, and predictions
       "all"                                — all of the above
-
-    Returns True on success, False if nothing was found to delete.
     """
     data_type = request.data_type.strip().lower()
     deleted_any = False
 
     if data_type in ("predictions", "prediction_history", "all"):
-        rows = (
-            db.query(PredictionHistory)
-            .filter(PredictionHistory.user_id == user_id)
-            .all()
-        )
-        for row in rows:
-            db.delete(row)
+        if user_id is not None:
+            history_filter = PredictionHistory.user_id == user_id
+        else:
+            history_filter = PredictionHistory.user_id.is_(None)
+
+        rows = db.query(PredictionHistory).filter(history_filter).all()
         if rows:
+            pred_ids = [r.id for r in rows]
+            db.query(ExplainabilityCache).filter(ExplainabilityCache.prediction_id.in_(pred_ids)).delete(synchronize_session=False)
+            db.query(AdvisoryHistory).filter(AdvisoryHistory.prediction_id.in_(pred_ids)).delete(synchronize_session=False)
+            db.query(PredictionHistory).filter(PredictionHistory.id.in_(pred_ids)).delete(synchronize_session=False)
             deleted_any = True
 
-    if data_type in ("preferences", "all"):
-        pref = (
-            db.query(UserPreference)
-            .filter(UserPreference.user_id == user_id)
-            .first()
-        )
+    if data_type in ("preferences", "all") and user_id is not None:
+        pref = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
         if pref:
             db.delete(pref)
             deleted_any = True
 
-    if data_type in ("profile", "all"):
-        pref = (
-            db.query(UserPreference)
-            .filter(UserPreference.user_id == user_id)
-            .first()
-        )
-        if pref:
-            pref.last_crop = None
-            pref.last_region = None
+    elif data_type == "profile" and user_id is not None:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            # 1. Clean up user's predictions, caches, and advisories
+            user_preds = db.query(PredictionHistory.id).filter(PredictionHistory.user_id == user_id).all()
+            if user_preds:
+                pred_ids = [p[0] for p in user_preds]
+                db.query(ExplainabilityCache).filter(ExplainabilityCache.prediction_id.in_(pred_ids)).delete(synchronize_session=False)
+                db.query(AdvisoryHistory).filter(AdvisoryHistory.prediction_id.in_(pred_ids)).delete(synchronize_session=False)
+                db.query(PredictionHistory).filter(PredictionHistory.id.in_(pred_ids)).delete(synchronize_session=False)
+
+            db.query(AdvisoryHistory).filter(AdvisoryHistory.user_id == user_id).delete(synchronize_session=False)
+            db.query(UserPreference).filter(UserPreference.user_id == user_id).delete(synchronize_session=False)
+            db.query(UserSession).filter(UserSession.user_id == user_id).delete(synchronize_session=False)
+            db.delete(user)
             deleted_any = True
 
     if deleted_any:

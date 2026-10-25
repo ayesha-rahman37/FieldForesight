@@ -156,7 +156,7 @@ export const ExplainabilityPanel: React.FC<ExplainabilityPanelProps> = ({ predic
                   fontSize={isTop ? '13' : '12'}
                   fontWeight={isTop ? '700' : '500'}
                   fill={isTop ? '#004741' : '#5A6E69'}
-                  fontFamily="Inter, sans-serif"
+                  fontFamily="var(--font-sans)"
                 >
                   {entry.factorLabel}
                 </text>
@@ -170,7 +170,7 @@ export const ExplainabilityPanel: React.FC<ExplainabilityPanelProps> = ({ predic
                   fontSize={isTop ? '13' : '12'}
                   fontWeight={isTop ? '700' : '500'}
                   fill={isTop ? '#004741' : '#5A6E69'}
-                  fontFamily="Inter, sans-serif"
+                  fontFamily="var(--font-sans)"
                 >
                   {entry.percent.toFixed(1)}%
                 </text>
