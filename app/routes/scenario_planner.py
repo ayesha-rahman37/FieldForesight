@@ -14,7 +14,11 @@ router = APIRouter()
 
 @router.post("/", response_model=ScenarioResponse)
 @router.post("", response_model=ScenarioResponse, include_in_schema=False)
-def scenario(request: ScenarioRequest, db: Session = Depends(get_db)):
+def scenario(
+    request: ScenarioRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Standard REST endpoint for scenario yield recalculation."""
     try:
         return compute(

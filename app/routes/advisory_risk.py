@@ -16,7 +16,7 @@ from app.models.region import Region
 from app.models.risk_threshold import RiskThreshold
 from app.models.user import User
 from app.scripts.seed_samir_data import seed_samir_data
-from app.services.auth_service import get_optional_current_user
+from app.services.auth_service import get_current_user, get_optional_current_user
 from app.services.groq_service import generate_bangla_advisory_groq
 from app.services.prediction_service import get_prediction
 from app.services.risk_service import calculate_risk_and_alerts
@@ -271,7 +271,7 @@ def _compute_advisory(
 def generate_advisory_post(
     req: AdvisoryGenerateRequest,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     return _compute_advisory(req=req, db=db, current_user=current_user, persist=True)
 
@@ -284,7 +284,7 @@ def generate_advisory_get(
     yield_val: Optional[float] = Query(None, alias="yield"),
     prediction_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     req = AdvisoryGenerateRequest(
         crop=crop,

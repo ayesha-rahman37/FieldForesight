@@ -18,6 +18,7 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
     history: Optional[List[ChatHistoryItem]] = None
     context: Optional[ChatContextPayload] = None
+    agent_mode: Optional[bool] = False
 
 
 class ChatStreamRequest(BaseModel):
@@ -25,10 +26,14 @@ class ChatStreamRequest(BaseModel):
     conversation_id: Optional[str] = None
     history: Optional[List[ChatHistoryItem]] = None
     context: Optional[ChatContextPayload] = None
+    agent_mode: Optional[bool] = False
 
 
 class ChatResponse(BaseModel):
     reply: str
     conversation_id: str
     sources: List[str] = []
+    tools_used: List[str] = []
+    trace_steps: List[str] = []
+
 

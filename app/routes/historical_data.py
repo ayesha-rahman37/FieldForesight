@@ -6,6 +6,8 @@ from app.database import get_db
 from app.models.crop import Crop
 from app.models.historical_yield import HistoricalYield
 from app.models.region import Region
+from app.models.user import User
+from app.services.auth_service import get_current_user
 from app.services.regional_fallback import get_regional_historical_data
 
 router = APIRouter()
@@ -16,6 +18,7 @@ def get_historical_data(
     crop: str,
     region: str,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     clean_crop = crop.strip()
     canonical_region = normalize_region_name(region)

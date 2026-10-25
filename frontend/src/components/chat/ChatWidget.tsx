@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { MessageSquare, LogIn } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 import { ChatPanel } from './ChatPanel';
 
 export const ChatWidget: React.FC = () => {
@@ -103,7 +104,9 @@ export const ChatWidget: React.FC = () => {
       </button>
 
       {/* Chat Panel */}
-      <ChatPanel isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <ErrorBoundary featureName="কৃষি সহকারী চ্যাট">
+        <ChatPanel isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      </ErrorBoundary>
     </>
   );
 };

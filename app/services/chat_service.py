@@ -95,7 +95,21 @@ def prepare_context(
     user_msg = message.strip()
 
     # 1. Greeting Check
+    has_bengali = any('\u0980' <= ch <= '\u09FF' for ch in user_msg)
+    is_en = not has_bengali and any('a' <= ch.lower() <= 'z' for ch in user_msg)
+
     if _is_greeting(user_msg):
+        early = (
+            "Hello! I am your FieldForesight Agricultural Assistant. "
+            "Feel free to ask any question regarding crop care, irrigation, fertilizer management, "
+            "pest control, or yield forecasts."
+            if is_en
+            else (
+                "আসসালামু আলাইকুম! আমি ফিল্ডফোরসাইট কৃষি সহকারী। "
+                "আপনার ফসলের পরিচর্যা, সেচ, সার প্রয়োগ, রোগবালাই দমন বা ফলনের পূর্বাভাস সংক্রান্ত "
+                "যেকোনো প্রশ্ন করতে পারেন।"
+            )
+        )
         return PreparedContext({
             "conversation_id": conv_id,
             "user": user,
@@ -104,11 +118,7 @@ def prepare_context(
             "tool_results": [],
             "sources": [],
             "messages": [],
-            "early_reply": (
-                "আসসালামু আলাইকুম! আমি ফিল্ডফোরসাইট কৃষি সহকারী। "
-                "আপনার ফসলের পরিচর্যা, সেচ, সার প্রয়োগ, রোগবালাই দমন বা ফলনের পূর্বাভাস সংক্রান্ত "
-                "যেকোনো প্রশ্ন করতে পারেন।"
-            ),
+            "early_reply": early,
             "target_model": DEFAULT_MODEL,
             "prompt_tokens": 0,
             "user_message": user_msg,
@@ -295,7 +305,39 @@ def generate(
                 f"এ বিষয়ে আমার কাছে সুনির্দিষ্ট নির্ভরযোগ্য তথ্য পাওয়া যায়নি।"
             )
 
-    # D. Live Mode (Enforces maximum live budget of 5 calls)
+    # D. Live Mode: Prioritize Gemini 1.5 Flash (1M TPM free tier), then Groq
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        try:
+            gemini_model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
+            sys_prompt = next((m["content"] for m in messages if m["role"] == "system"), "")
+            contents = []
+            for m in messages:
+                if m["role"] == "system":
+                    continue
+                role = "user" if m["role"] == "user" else "model"
+                contents.append({"role": role, "parts": [{"text": m["content"]}]})
+            payload = {
+                "systemInstruction": {"parts": [{"text": sys_prompt}]},
+                "contents": contents,
+                "generationConfig": {"temperature": 0.25, "maxOutputTokens": 600},
+            }
+            start_t = time.time()
+            resp = requests.post(url, json=payload, timeout=10)
+            if resp.status_code == 200:
+                candidates = resp.json().get("candidates", [])
+                if candidates:
+                    reply_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+                    if reply_text:
+                        latency = (time.time() - start_t) * 1000.0
+                        comp_tokens = estimate_tokens(reply_text)
+                        store_cached_response(gemini_model, messages, reply_text)
+                        log_token_usage("live", gemini_model, prompt_tokens, comp_tokens, cached=False, is_live=True, latency_ms=latency)
+                        return reply_text
+        except Exception:
+            pass
+
     groq_api_key = _get_groq_api_key()
     if groq_api_key and mode == "live":
         register_live_call_intent(model)

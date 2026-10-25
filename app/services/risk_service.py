@@ -4,6 +4,7 @@ from app.data.district_coordinates import normalize_region_name
 from app.models.risk_threshold import RiskThreshold
 from app.models.crop_variety import CropVariety
 from app.models.ndvi_cache import NDVICache
+from app.models.agri_alert import AgriAlert
 
 
 # Regional agricultural climate zones in Bangladesh
@@ -271,7 +272,42 @@ def calculate_risk_and_alerts(
             "action_en": "Maintain 2-3 inches of standing water and apply foliar potassium spray in late afternoon.",
         })
 
-    # 6. Crop-specific default pest alert if none generated yet
+    # 6. Crawled Ground Incidents & News Alerts from n8n / Webhook
+    if db:
+        try:
+            recent_news = (
+                db.query(AgriAlert)
+                .filter(
+                    (AgriAlert.district.ilike(canonical_region))
+                    | (AgriAlert.district.ilike(region.strip()))
+                    | (AgriAlert.district == "National")
+                )
+                .order_by(AgriAlert.crawled_at.desc())
+                .limit(2)
+                .all()
+            )
+            for news in recent_news:
+                is_high_risk = news.risk_tag in ["Fertilizer Shortage", "Weather Extreme", "Pest/Disease"]
+                risk_inc = 15.0 if is_high_risk else 5.0
+                risk_score += risk_inc
+                risk_factors.append(f"সাম্প্রতিক ফিল্ড সংবাদ: {news.title} ({news.risk_tag})")
+                alerts.append({
+                    "id": f"alert-crawled-{news.id}",
+                    "category": "market" if news.risk_tag == "Market Trend" else "pest" if news.risk_tag == "Pest/Disease" else "climate",
+                    "level": "high" if is_high_risk else "medium",
+                    "title": f"🚨 ফিল্ড সংবাদ সতর্কতা: {news.title}",
+                    "title_bn": f"🚨 ফিল্ড সংবাদ সতর্কতা: {news.title}",
+                    "title_en": f"🚨 Live Ground Incident Alert: {news.title}",
+                    "description": news.summary or news.title,
+                    "description_bn": news.summary or news.title,
+                    "description_en": news.summary or news.title,
+                    "action_bn": f"উৎস বিস্তারিত দেখুন: {news.source_url}",
+                    "action_en": f"View source article: {news.source_url}",
+                })
+        except Exception as e:
+            print(f"Warning: AgriAlert lookup error in risk_service: {e}")
+
+    # 7. Crop-specific default pest alert if none generated yet
     if not any(a["category"] == "pest" for a in alerts):
         pest_title_map = {
             "Rice": ("মাজরা পোকা ও নেক ব্লাস্ট পর্যবেক্ষণ", "Stem Borer & Neck Blast Vigilance"),

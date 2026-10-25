@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import api from '../../api/client';
 import { type RiskLevel } from '../advisory/RiskLevelBadge';
-import { WarningCards, type RiskAlertItem } from '../advisory/WarningCards';
+import { type RiskAlertItem } from '../advisory/WarningCards';
+import { ErrorState } from '../../components/common/ErrorState';
 
 interface AdvisoryRisksCardProps {
   crop: string;
@@ -56,7 +57,6 @@ export const AdvisoryRisksCard: React.FC<AdvisoryRisksCardProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
   const [speaking, setSpeaking] = useState<boolean>(false);
-  const [showWarnings, setShowWarnings] = useState<boolean>(false);
   const [completedItems, setCompletedItems] = useState<Record<number, boolean>>({});
 
   const loadData = async () => {
@@ -182,13 +182,14 @@ export const AdvisoryRisksCard: React.FC<AdvisoryRisksCardProps> = ({
           {riskLevel.toUpperCase()} RISK {riskScore}%
         </span>
 
-        <button
-          type="button"
-          onClick={() => setShowWarnings((prev) => !prev)}
-          className="px-2.5 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200/70 border border-slate-200 text-slate-600 text-[11px] font-semibold transition"
+        <a
+          href="#field-warnings-section"
+          className="px-2.5 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200/70 border border-slate-200 text-slate-600 text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
+          title={t('ডানপাশে সতর্কতা দেখুন', 'View warnings on the right')}
         >
-          {warningCount} {warningCount === 1 ? 'Warning' : 'Warnings'}
-        </button>
+          <span>{warningCount} {warningCount === 1 ? 'Warning' : 'Warnings'}</span>
+          <span className="text-[10px] text-slate-400">→</span>
+        </a>
       </div>
 
       {loading ? (
@@ -198,35 +199,10 @@ export const AdvisoryRisksCard: React.FC<AdvisoryRisksCardProps> = ({
           <div className="h-12 bg-slate-100 rounded-xl" />
         </div>
       ) : error || !advisory ? (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-xs flex items-center justify-between">
-          <span className="text-red-700">
-            {t('পরামর্শ ও ঝুঁকি উপাত্ত লোড করতে ত্রুটি।', 'Failed to load advisory data.')}
-          </span>
-          <button
-            type="button"
-            onClick={loadData}
-            className="px-2.5 py-1 bg-red-600 text-white rounded-lg text-[11px] font-semibold"
-          >
-            {t('পুনরায় চেষ্টা', 'Retry')}
-          </button>
-        </div>
-      ) : showWarnings ? (
-        <div className="space-y-3">
-          <WarningCards
-            crop={crop}
-            region={region}
-            variety={variety}
-            yieldVal={yieldVal}
-            initialAlerts={advisory.warning_alerts}
-          />
-          <button
-            type="button"
-            onClick={() => setShowWarnings(false)}
-            className="text-xs font-semibold text-emerald-700 hover:underline"
-          >
-            ← {t('কৃষি পরামর্শে ফিরে যান', 'Back to Agricultural Advisory')}
-          </button>
-        </div>
+        <ErrorState
+          featureName={t('কৃষি পরামর্শ ও ঝুঁকি', 'Advisory and Risk')}
+          onRetry={() => void loadData()}
+        />
       ) : (
         <>
           {/* Green Tinted Agricultural Advisory Box */}

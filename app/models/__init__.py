@@ -1,4 +1,5 @@
 from app.models.advisory_history import AdvisoryHistory
+from app.models.agri_alert import AgriAlert
 from app.models.chat_message import ChatMessage
 from app.models.crop import Crop
 from app.models.crop_variety import CropVariety
@@ -19,6 +20,7 @@ from app.models.user_preference import UserPreference
 
 __all__ = [
     "AdvisoryHistory",
+    "AgriAlert",
     "Crop",
     "CropVariety",
     "ExplainabilityCache",

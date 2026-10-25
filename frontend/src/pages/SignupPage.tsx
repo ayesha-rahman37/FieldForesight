@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useComingSoon } from '../context/ComingSoonContext';
 import { registerUser } from '../api/auth';
+import { RealGoogleSignInButton } from '../components/auth/RealGoogleSignInButton';
+import { validateEmail, translateAuthError } from '../utils/emailValidator';
 
 export const SignupPage: React.FC = () => {
   const { login } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
-  const { openComingSoon } = useComingSoon();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -24,10 +24,6 @@ export const SignupPage: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const handleGoogleSignIn = () => {
-    openComingSoon(t('গুগল দিয়ে সাইন আপ', 'Google Sign Up'));
-  };
-
   const update = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
     setError(null);
@@ -35,6 +31,11 @@ export const SignupPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailValidation = validateEmail(form.email, language as 'bn' | 'en');
+    if (!emailValidation.isValid) {
+      setError(emailValidation.error || t('একটি সঠিক ইমেইল প্রদান করুন', 'Please enter a valid email address'));
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       setError(t("পাসওয়ার্ড দুটি মেলেনি", "Passwords do not match"));
       return;
@@ -193,24 +194,12 @@ export const SignupPage: React.FC = () => {
 
               {error && (
                 <div className="mb-4 p-3 bg-rose-50 text-rose-600 text-sm rounded-xl border border-rose-100 font-medium">
-                  {error}
+                  {translateAuthError(error, language)}
                 </div>
               )}
 
               <div className="mb-6">
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm cursor-pointer"
-                >
-                  <svg className="w-5 h-5 shrink-0" width="20" height="20" viewBox="0 0 24 24">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"></path>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"></path>
-                  </svg>
-                  {t('গুগল দিয়ে শুরু করুন', 'Continue with Google')}
-                </button>
+                <RealGoogleSignInButton onError={(msg) => setError(msg)} />
                 <div className="relative flex items-center justify-center my-6">
                   <div className="border-t border-slate-200 w-full"></div>
                   <span className="bg-white px-3 text-xs text-slate-400 uppercase tracking-wider font-medium">{t('অথবা ইমেইল দিয়ে নিবন্ধন করুন', 'Or register with email')}</span>

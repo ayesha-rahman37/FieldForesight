@@ -1,7 +1,8 @@
 import json
 import time
+import uuid
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -13,6 +14,8 @@ from app.schemas.chat import ChatRequest, ChatResponse, ChatStreamRequest
 from app.services.auth_service import get_current_user
 from app.services.chat_service import generate_chat_response, prepare_context
 from app.services.groq_service import stream_completion
+from app.services.langgraph_agent import run_agent_turn
+from app.services.graph_service import check_graph_connection
 
 router = APIRouter()
 
@@ -37,12 +40,55 @@ def check_chat_rate_limit(user_id: int) -> None:
 
 @router.post("", response_model=ChatResponse)
 @router.post("/", response_model=ChatResponse, include_in_schema=False)
-def chat_endpoint(request: ChatRequest) -> ChatResponse:
+def chat_endpoint(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+) -> ChatResponse:
     """
-    Agricultural AI Chatbot full-reply endpoint with RAG retrieval, guardrails,
-    pesticide safety rules, and language mirroring.
+    Agricultural AI Chatbot endpoint: autonomously managed by the
+    LangGraph Agronomic Orchestrator with dynamic tool decision-making.
     """
-    return generate_chat_response(request)
+    return chat_agent_endpoint(request, current_user=current_user)
+
+
+@router.post("/agent", response_model=ChatResponse)
+def chat_agent_endpoint(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+) -> ChatResponse:
+    """
+    LangGraph Autonomous Agronomic Agent with Neo4j GraphRAG and ML Tool Execution.
+    """
+    check_chat_rate_limit(current_user.id)
+    conv_id = request.conversation_id or str(uuid.uuid4())
+    history = [h.model_dump() for h in (request.history or [])]
+    ctx = request.context.model_dump() if request.context else None
+
+    try:
+        agent_res = run_agent_turn(
+            user_query=request.message,
+            conversation_history=history,
+            dashboard_context=ctx,
+        )
+        return ChatResponse(
+            reply=agent_res["reply"],
+            conversation_id=conv_id,
+            sources=[],
+            tools_used=agent_res["tools_used"],
+            trace_steps=agent_res["trace_steps"],
+        )
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        print(f"AGENT ERROR: {exc}", flush=True)
+        # Fallback to standard grounded RAG if agent encounters transient error
+        return generate_chat_response(request)
+
+
+@router.get("/graph/status")
+def graph_status_endpoint():
+    """Returns the live Neo4j Knowledge Graph connectivity status."""
+    return check_graph_connection()
 
 
 @router.post("/stream")

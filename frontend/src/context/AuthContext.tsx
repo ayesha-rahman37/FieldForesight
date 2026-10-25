@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../features/personalization/types';
-import { getMe, logoutUser } from '../api/auth';
+import { getMe, logoutUser, googleOAuthLogin } from '../api/auth';
 
 interface AuthContextType {
   token: string | null;
   user: User | null;
   login: (token: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -44,6 +45,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(newToken);
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    const res = await googleOAuthLogin(credential);
+    await login(res.access_token);
+  };
+
   const logout = async () => {
     await logoutUser();
     localStorage.removeItem('access_token');
@@ -53,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, loading }}>
+    <AuthContext.Provider value={{ token, user, login, loginWithGoogle, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -44,6 +44,7 @@ from app.routes.ndvi import router as ndvi_router
 from app.routes.personalization import router as personalization_router
 from app.routes.scenario_planner import router as scenario_planner_router
 from app.routes.varieties import router as varieties_router
+from app.routes.webhook_news import router as webhook_news_router
 from app.scripts.load_data import load_data
 from app.scripts.seed_samir_data import seed_samir_data
 
@@ -58,6 +59,11 @@ def initialize_database():
         load_data()
     except Exception as exc:
         print(f"Warning: load_data failed: {exc}")
+    try:
+        from app.services.graph_service import seed_agricultural_knowledge_graph
+        seed_agricultural_knowledge_graph()
+    except Exception as exc:
+        print(f"Warning: seed_agricultural_knowledge_graph failed: {exc}")
 
 
 @asynccontextmanager
@@ -145,6 +151,8 @@ origins = list(
     )
 )
 
+from app.middleware.rate_limiter import SlidingWindowRateLimiter
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -153,6 +161,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SlidingWindowRateLimiter)
 
 app.include_router(history.router, prefix="/api", tags=["Prediction History"])
 app.include_router(community_router, prefix="/api/community", tags=["Community"])
@@ -173,6 +182,7 @@ app.include_router(varieties_router, prefix="/api", tags=["Varieties"])
 app.include_router(data_sources.router, prefix="/api/data-sources", tags=["Data Sources"])
 app.include_router(environmental_data.router, prefix="/api/environmental-data", tags=["Environmental Data"])
 app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
+app.include_router(webhook_news_router)
 
 
 from starlette.requests import Request

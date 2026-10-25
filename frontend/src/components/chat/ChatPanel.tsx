@@ -30,7 +30,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     messages,
     loading,
     isStreaming,
-    cancelStream,
+    stopConversation,
     error,
     isUnauthorized,
     pageContext,
@@ -75,9 +75,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   };
 
   const suggestionChips = [
-    'আমনের সার প্রয়োগ মাত্রা কত?',
-    'আলুর নাবি ধসা রোগ প্রতিরোধ কীভাবে করব?',
-    'গম চাষে প্রথম সেচ কখন দিতে হয়?',
+    'রংপুরে ব্রি ধান ২৮ চাষে ফলন ও ব্লাস্ট দমন পরামর্শ চাই',
+    'আলুর নাবি ধসা রোগ প্রতিরোধ ও লক্ষণ কী?',
+    'দিনাজপুরে সাম্প্রতিক আবহাওয়া ও দুর্যোগ সতর্কতা কেমন?',
   ];
 
   const contextText = [
@@ -203,33 +203,27 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
               >
                 {msg.content}
               </div>
-
-              {/* Sources list below assistant message */}
-              {!isUser && msg.sources && msg.sources.length > 0 && (
-                <div className="mt-1.5 max-w-[85%] flex flex-wrap items-center gap-1.5 text-xs text-[#717568]">
-                  <span className="font-medium text-[#004741]">উৎস:</span>
-                  {msg.sources.map((src, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-0.5 bg-[#F0EDE4] text-[#004741] rounded-md font-medium text-[11px] border border-[#E5E1D6]"
-                    >
-                      {src}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           );
         })}
 
-        {/* Loading Typing Indicator */}
+        {/* Loading Typing Indicator with Inline Stop Button */}
         {loading && (
-          <div className="flex items-start">
+          <div className="flex items-center gap-2">
             <div className="bg-white border border-[#E5E1D6] px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#004741] animate-bounce [animation-delay:-0.3s]" />
               <span className="w-2 h-2 rounded-full bg-[#004741] animate-bounce [animation-delay:-0.15s]" />
               <span className="w-2 h-2 rounded-full bg-[#004741] animate-bounce" />
             </div>
+            <button
+              type="button"
+              onClick={stopConversation}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+              title="কথোপকথন থামান"
+            >
+              <Square className="w-3 h-3 fill-current" />
+              <span>থামান</span>
+            </button>
           </div>
         )}
 
@@ -276,13 +270,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             placeholder="কৃষি বিষয়ক যেকোনো প্রশ্ন লিখুন..."
             className="w-full resize-none p-2.5 pr-12 text-[15px] bg-transparent text-[#1F1F1B] placeholder-[#717568] focus:outline-none"
           />
-          {isStreaming ? (
+          {loading || isStreaming ? (
             <button
               type="button"
-              onClick={cancelStream}
-              aria-label="থামান"
-              title="থামান"
-              className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-[#C62828] text-white hover:bg-[#B71C1C] transition-colors cursor-pointer"
+              onClick={stopConversation}
+              aria-label="কথোপকথন থামান"
+              title="কথোপকথন থামান"
+              className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-[#C62828] text-white hover:bg-[#B71C1C] transition-colors cursor-pointer shadow-xs"
             >
               <Square className="w-4 h-4 fill-current" />
             </button>
@@ -290,7 +284,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             <button
               type="button"
               onClick={handleSend}
-              disabled={!input.trim() || loading}
+              disabled={!input.trim()}
               aria-label="বার্তা পাঠান"
               className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-[#004741] text-[#F0EDE4] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#084936] transition-colors cursor-pointer"
             >

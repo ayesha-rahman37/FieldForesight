@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Phone, Sprout, BarChart3, Satellite, ShieldAlert, Sparkles, RotateCcw } from 'lucide-react';
 import { Loader } from '../components/common/Loader';
 import { ErrorState } from '../components/common/ErrorState';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { useLanguage } from '../context/LanguageContext';
 import type { DashboardSection } from '../components/layout/DashboardNav';
 import api from '../api/client';
@@ -11,6 +12,7 @@ import { MyDataPanel } from '../features/personalization/MyDataPanel';
 import { UserProfile } from '../features/personalization/UserProfile';
 import { AdminPanel } from '../features/admin/AdminPanel';
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
+import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import type { ScenarioResponse } from '../features/scenario-planner/types';
 
@@ -21,6 +23,8 @@ import { VegetationDriverCard } from '../features/forecast/VegetationDriverCard'
 import { SimulationScenariosCard } from '../features/forecast/SimulationScenariosCard';
 import { RegionalContextCard } from '../features/forecast/RegionalContextCard';
 import { AdvisoryRisksCard } from '../features/forecast/AdvisoryRisksCard';
+import { WarningCards } from '../features/advisory/WarningCards';
+import { LiveAgriNewsTicker } from '../features/forecast/LiveAgriNewsTicker';
 
 interface DashboardPageProps {
   initialCrop?: string;
@@ -79,6 +83,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   initialCrop = '',
   initialRegion = '',
 }) => {
+  const { user, loading: authLoading } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
   const { setPageContext } = useChat();
@@ -279,18 +284,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* LEFT COLUMN (lg:col-span-4): Parameters Card */}
           <div className="lg:col-span-4 space-y-4">
-            <ParametersCard
-              crops={crops}
-              regions={regions}
-              selectedCrop={selectedCrop}
-              selectedRegion={selectedRegion}
-              selectedVariety={selectedVariety}
-              onCropChange={(c) => setSelectedCrop(c)}
-              onRegionChange={(r) => setSelectedRegion(r)}
-              onVarietyChange={(v) => setSelectedVariety(v)}
-              onRunForecast={() => void runForecast()}
-              loading={loading}
-            />
+            <ErrorBoundary featureName={t('পূর্বাভাস প্যারামিটার', 'Forecast Parameters')}>
+              <ParametersCard
+                crops={crops}
+                regions={regions}
+                selectedCrop={selectedCrop}
+                selectedRegion={selectedRegion}
+                selectedVariety={selectedVariety}
+                onCropChange={(c) => setSelectedCrop(c)}
+                onRegionChange={(r) => setSelectedRegion(r)}
+                onVarietyChange={(v) => setSelectedVariety(v)}
+                onRunForecast={() => void runForecast()}
+                loading={loading}
+              />
+            </ErrorBoundary>
           </div>
 
           {/* RIGHT COLUMN (lg:col-span-8): Ready for Forecast Guide & Presets */}
@@ -428,78 +435,110 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {/* LEFT COLUMN (lg:col-span-4): Parameters + Simulation Scenarios + Regional Validation Note */}
         <div className="lg:col-span-4 space-y-4">
-          <ParametersCard
-            crops={crops}
-            regions={regions}
-            selectedCrop={selectedCrop}
-            selectedRegion={selectedRegion}
-            selectedVariety={selectedVariety}
-            onCropChange={(c) => setSelectedCrop(c)}
-            onRegionChange={(r) => setSelectedRegion(r)}
-            onVarietyChange={(v) => setSelectedVariety(v)}
-            onRunForecast={() => void runForecast()}
-            loading={loading}
-          />
+          <ErrorBoundary featureName={t('পূর্বাভাস প্যারামিটার', 'Forecast Parameters')}>
+            <ParametersCard
+              crops={crops}
+              regions={regions}
+              selectedCrop={selectedCrop}
+              selectedRegion={selectedRegion}
+              selectedVariety={selectedVariety}
+              onCropChange={(c) => setSelectedCrop(c)}
+              onRegionChange={(r) => setSelectedRegion(r)}
+              onVarietyChange={(v) => setSelectedVariety(v)}
+              onRunForecast={() => void runForecast()}
+              loading={loading}
+            />
+          </ErrorBoundary>
 
-          <SimulationScenariosCard
-            crop={selectedCrop}
-            region={selectedRegion}
-            variety={selectedVariety}
-            baseYield={baseYield}
-            onScenarioChange={(res, rf, temp) => {
-              setScenarioResult(res);
-              setSimRainfallAdj(rf);
-              setSimTempAdj(temp);
-              if (prediction) {
-                saveForecastToStorage({
-                  crop: selectedCrop,
-                  region: selectedRegion,
-                  variety: selectedVariety,
-                  prediction,
-                  predictionId,
-                  simRainfallAdj: rf,
-                  simTempAdj: temp,
-                  scenarioResult: res,
-                });
-              }
-            }}
-          />
+          <ErrorBoundary featureName={t('জলবায়ু সিমুলেশন', 'Climate Simulation')}>
+            <SimulationScenariosCard
+              crop={selectedCrop}
+              region={selectedRegion}
+              variety={selectedVariety}
+              baseYield={baseYield}
+              onScenarioChange={(res, rf, temp) => {
+                setScenarioResult(res);
+                setSimRainfallAdj(rf);
+                setSimTempAdj(temp);
+                if (prediction) {
+                  saveForecastToStorage({
+                    crop: selectedCrop,
+                    region: selectedRegion,
+                    variety: selectedVariety,
+                    prediction,
+                    predictionId,
+                    simRainfallAdj: rf,
+                    simTempAdj: temp,
+                    scenarioResult: res,
+                  });
+                }
+              }}
+            />
+          </ErrorBoundary>
 
-          <RegionalContextCard region={selectedRegion} crop={selectedCrop} />
+          <ErrorBoundary featureName={t('আঞ্চলিক প্রেক্ষাপট', 'Regional Validation')}>
+            <RegionalContextCard region={selectedRegion} crop={selectedCrop} />
+          </ErrorBoundary>
         </div>
 
         {/* CENTER COLUMN (lg:col-span-5): Projected Yield + Risk Evaluation & Advisory */}
         <div className="lg:col-span-5 space-y-4">
-          <ProjectedYieldCard
-            predictedYield={displayedYield}
-            lowerBound={displayedLower}
-            upperBound={displayedUpper}
-            region={selectedRegion}
-            baselineDelta={baselineDelta}
-          />
+          <ErrorBoundary featureName={t('ফলন পূর্বাভাস', 'Projected Yield')}>
+            <ProjectedYieldCard
+              predictedYield={displayedYield}
+              lowerBound={displayedLower}
+              upperBound={displayedUpper}
+              region={selectedRegion}
+              baselineDelta={baselineDelta}
+            />
+          </ErrorBoundary>
 
-          <AdvisoryRisksCard
-            crop={selectedCrop}
-            region={selectedRegion}
-            yieldVal={displayedYield}
-            variety={selectedVariety}
-            predictionId={predictionId}
-            lowerBound={displayedLower}
-            upperBound={displayedUpper}
-            rainfallAdj={simRainfallAdj}
-            tempAdj={simTempAdj}
-          />
+          <ErrorBoundary featureName={t('কৃষি ঝুঁকি ও পরামর্শ', 'Advisory & Risks')}>
+            <AdvisoryRisksCard
+              crop={selectedCrop}
+              region={selectedRegion}
+              yieldVal={displayedYield}
+              variety={selectedVariety}
+              predictionId={predictionId}
+              lowerBound={displayedLower}
+              upperBound={displayedUpper}
+              rainfallAdj={simRainfallAdj}
+              tempAdj={simTempAdj}
+            />
+          </ErrorBoundary>
         </div>
 
-        {/* RIGHT COLUMN (lg:col-span-3): Vegetation Health & Driver Attribution + Community Comparison */}
+        {/* RIGHT COLUMN (lg:col-span-3): Vegetation Health & Driver Attribution + Active Field Warnings */}
         <div className="lg:col-span-3 space-y-4">
-          <VegetationDriverCard
-            region={selectedRegion}
-            crop={selectedCrop}
-            predictionId={predictionId}
-            rainfallAdj={simRainfallAdj}
-            tempAdj={simTempAdj}
-          />
+          <ErrorBoundary featureName={t('স্যাটেলাইট ভেজিটেশন ইনডেক্স', 'Vegetation & Driver')}>
+            <VegetationDriverCard
+              region={selectedRegion}
+              crop={selectedCrop}
+              predictionId={predictionId}
+              rainfallAdj={simRainfallAdj}
+              tempAdj={simTempAdj}
+            />
+          </ErrorBoundary>
+
+          {/* Active Field Risk Warnings below Vegetation Health */}
+          <div id="field-warnings-section" className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+            <div className="flex items-center justify-between gap-2 mb-3.5">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-600" />
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.06em] text-slate-800">
+                  {t('মাঠ পর্যায়ের ঝুঁকি ও সতর্কতা', 'FIELD RISKS & WARNINGS')}
+                </h3>
+              </div>
+            </div>
+            <ErrorBoundary featureName={t('মাঠ সতর্কতা', 'Field Warnings')}>
+              <WarningCards
+                crop={selectedCrop}
+                region={selectedRegion}
+                variety={selectedVariety}
+                yieldVal={displayedYield}
+              />
+            </ErrorBoundary>
+          </div>
 
           {/* One-Line Community Benchmark Summary with Link to Yield Insights */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-3 text-xs">
@@ -528,7 +567,45 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const renderSectionPanel = () => {
     switch (activeSection) {
       case 'overview':
-        return renderOverviewResults();
+        return (
+          <div className="space-y-5">
+            <ErrorBoundary featureName={t('লাইভ কৃষি সংবাদ', 'Live Agri News')}>
+              <LiveAgriNewsTicker selectedDistrict={selectedRegion} />
+            </ErrorBoundary>
+            {!authLoading && !user ? (
+              <div className="bg-white border border-emerald-100 rounded-3xl p-8 sm:p-12 text-center shadow-lg shadow-emerald-950/5 max-w-2xl mx-auto my-8">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-4 text-emerald-800">
+                  <ShieldAlert className="w-8 h-8 text-emerald-700" />
+                </div>
+                <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                  {t('এআই পূর্বাভাস ও পরামর্শ পেতে সাইন ইন করুন', 'Sign In to Access Precision Yield Forecasting')}
+                </h2>
+                <p className="mt-2 text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                  {t(
+                    'বাংলাদেশের ৬৪টি জেলার মেটা প্রফেট ইয়েল্ড মডেল, স্যাটেলাইট এনডিভিআই এবং এআই এগ্রোনমিক পরামর্শ নিরাপদে ব্যবহারের জন্য লগইন করুন।',
+                    'Access district-level Meta Prophet yield projections, satellite vegetation indices, and localized agricultural advisories securely.'
+                  )}
+                </p>
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link
+                    to="/login"
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#047857] hover:bg-[#065f46] text-white font-semibold text-sm transition shadow-sm"
+                  >
+                    {t('সাইন ইন করুন', 'Sign In')}
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm transition shadow-sm"
+                  >
+                    {t('নতুন একাউন্ট তৈরি করুন', 'Create Account')}
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              renderOverviewResults()
+            )}
+          </div>
+        );
       case 'my-data':
         return (
           <ProtectedRoute>

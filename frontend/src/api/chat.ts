@@ -11,6 +11,8 @@ export interface ChatMessageItem {
   role: 'user' | 'assistant';
   content: string;
   sources?: string[];
+  tools_used?: string[];
+  trace_steps?: string[];
   timestamp: number;
   isPartial?: boolean;
   hasError?: boolean;
@@ -21,12 +23,15 @@ export interface SendChatRequest {
   conversation_id?: string;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
   context?: ChatContextPayload;
+  agent_mode?: boolean;
 }
 
 export interface SendChatResponse {
   reply: string;
   conversation_id?: string;
   sources?: string[];
+  tools_used?: string[];
+  trace_steps?: string[];
 }
 
 export type ChatStreamEvent =
@@ -38,9 +43,25 @@ export type ChatStreamEvent =
 /**
  * Sends a message to the AI Chat API (non-streaming full reply).
  */
-export const sendChatMessage = async (payload: SendChatRequest): Promise<SendChatResponse> => {
-  const response = await api.post<SendChatResponse>('/api/chat', payload);
+export const sendChatMessage = async (
+  payload: SendChatRequest,
+  signal?: AbortSignal
+): Promise<SendChatResponse> => {
+  const endpoint = payload.agent_mode ? '/api/chat/agent' : '/api/chat';
+  const response = await api.post<SendChatResponse>(endpoint, payload, { signal });
   return response.data;
+};
+
+/**
+ * Checks connectivity status of Neo4j Graph Database.
+ */
+export const getGraphStatus = async (): Promise<{ status: string; uri?: string }> => {
+  try {
+    const res = await api.get('/api/chat/graph/status');
+    return res.data;
+  } catch {
+    return { status: 'disconnected' };
+  }
 };
 
 /**

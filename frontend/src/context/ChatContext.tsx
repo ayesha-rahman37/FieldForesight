@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { sendChatMessage, streamChat } from '../api/chat';
+import { sendChatMessage } from '../api/chat';
 import type { ChatMessageItem, ChatContextPayload } from '../api/chat';
-import { CONFIG } from '../config';
 
 interface ChatContextType {
   isOpen: boolean;
@@ -12,6 +11,7 @@ interface ChatContextType {
   loading: boolean;
   isStreaming: boolean;
   cancelStream: () => void;
+  stopConversation: () => void;
   error: string | null;
   isUnauthorized: boolean;
   hasUnread: boolean;
@@ -62,23 +62,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  const cancelStream = useCallback(() => {
+  const stopConversation = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
     setIsStreaming(false);
     setLoading(false);
+    setError(null);
   }, []);
 
+  const cancelStream = stopConversation;
+
   const startNewChat = useCallback(() => {
-    cancelStream();
+    stopConversation();
     setMessages([]);
     setConversationId(null);
     setError(null);
     setIsUnauthorized(false);
     setLastFailedMessage(null);
-  }, [cancelStream]);
+  }, [stopConversation]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -114,148 +117,53 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setConversationId(activeConvId);
       }
 
-      if (CONFIG.CHAT_STREAMING) {
-        const controller = new AbortController();
-        abortControllerRef.current = controller;
-        setIsStreaming(true);
+      // Initialize AbortController for user cancellation
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
-        let assistantMsgId: string | null = null;
-        let accumulatedContent = '';
-
-        try {
-          await streamChat(
-            {
-              message: trimmed,
-              conversation_id: activeConvId,
-              history: historyPayload,
-              context: Object.keys(pageContext).length > 0 ? pageContext : undefined,
-            },
-            (event) => {
-              if (event.type === 'token') {
-                if (!assistantMsgId) {
-                  // First token received: create the assistant message bubble
-                  assistantMsgId = `asst-${Date.now()}`;
-                  accumulatedContent = event.text;
-                  const newAsstMsg: ChatMessageItem = {
-                    id: assistantMsgId,
-                    role: 'assistant',
-                    content: accumulatedContent,
-                    timestamp: Date.now(),
-                  };
-                  setMessages((prev) => [...prev, newAsstMsg]);
-                  setLoading(false); // Stop typing indicator
-                  if (!isOpenRef.current) {
-                    setHasUnread(true);
-                  }
-                } else {
-                  accumulatedContent += event.text;
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMsgId
-                        ? { ...m, content: accumulatedContent }
-                        : m
-                    )
-                  );
-                }
-              } else if (event.type === 'sources') {
-                if (assistantMsgId) {
-                  const sources = event.sources;
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMsgId ? { ...m, sources } : m
-                    )
-                  );
-                }
-              } else if (event.type === 'error') {
-                setError(event.message || 'উত্তর সম্পূর্ণ হয়নি');
-                setLastFailedMessage(trimmed);
-                if (assistantMsgId) {
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMsgId
-                        ? { ...m, isPartial: true, hasError: true }
-                        : m
-                    )
-                  );
-                }
-              } else if (event.type === 'done') {
-                if (!isOpenRef.current) {
-                  setHasUnread(true);
-                }
-              }
-            },
-            controller.signal
-          );
-        } catch (err: any) {
-          if (controller.signal.aborted) {
-            // Cancelled by user
-            if (assistantMsgId) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId ? { ...m, isPartial: true } : m
-                )
-              );
-            }
-          } else if (err?.status === 401 || err?.response?.status === 401) {
-            setIsUnauthorized(true);
-          } else {
-            // Midstream error or network drop
-            if (assistantMsgId) {
-              setError('উত্তর সম্পূর্ণ হয়নি');
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? { ...m, isPartial: true, hasError: true }
-                    : m
-                )
-              );
-            } else {
-              setError('উত্তর আনা যায়নি');
-            }
-            setLastFailedMessage(trimmed);
-          }
-        } finally {
-          setIsStreaming(false);
-          setLoading(false);
-          abortControllerRef.current = null;
-        }
-      } else {
-        // Non-streaming fallback
-        try {
-          const res = await sendChatMessage({
+      // Send message to Agricultural AI Orchestrator
+      try {
+        const res = await sendChatMessage(
+          {
             message: trimmed,
             conversation_id: activeConvId,
             history: historyPayload,
             context: Object.keys(pageContext).length > 0 ? pageContext : undefined,
-          });
+          },
+          controller.signal
+        );
 
-          if (res.conversation_id) {
-            setConversationId(res.conversation_id);
-          }
-
-          const assistantMsg: ChatMessageItem = {
-            id: `asst-${Date.now()}`,
-            role: 'assistant',
-            content: res.reply,
-            sources: res.sources,
-            timestamp: Date.now(),
-          };
-
-          setMessages((prev) => [...prev, assistantMsg]);
-
-          if (!isOpenRef.current) {
-            setHasUnread(true);
-          }
-        } catch (err: unknown) {
-          if (axios.isAxiosError(err) && err.response?.status === 401) {
-            setIsUnauthorized(true);
-          } else {
-            setError('উত্তর আনা যায়নি');
-            setLastFailedMessage(trimmed);
-          }
-        } finally {
-          setLoading(false);
+        if (res.conversation_id) {
+          setConversationId(res.conversation_id);
         }
+
+        const assistantMsg: ChatMessageItem = {
+          id: `asst-${Date.now()}`,
+          role: 'assistant',
+          content: res.reply,
+          sources: [],
+          timestamp: Date.now(),
+        };
+
+        setMessages((prev) => [...prev, assistantMsg]);
+
+        if (!isOpenRef.current) {
+          setHasUnread(true);
+        }
+      } catch (err: unknown) {
+        if (axios.isCancel(err) || (err instanceof Error && err.name === 'CanceledError')) {
+          // User intentionally stopped the conversation
+          return;
+        }
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          setIsUnauthorized(true);
+        } else {
+          setError('উত্তর আনা যায়নি');
+          setLastFailedMessage(trimmed);
+        }
+      } finally {
+        setLoading(false);
+        abortControllerRef.current = null;
       }
     },
     [loading, isStreaming, messages, conversationId, pageContext]
@@ -278,6 +186,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         isStreaming,
         cancelStream,
+        stopConversation,
         error,
         isUnauthorized,
         hasUnread,

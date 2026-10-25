@@ -65,7 +65,7 @@ def generate_llm_text(prompt: str, fallback_text: str) -> str:
                 print(f"Groq LLM text call error ({model_name}): {exc}", file=sys.stderr)
 
     gemini_key = _get_env_key("GEMINI_API_KEY")
-    gemini_model = _get_env_key("GEMINI_MODEL", "gemini-2.0-flash")
+    gemini_model = _get_env_key("GEMINI_MODEL", "gemini-1.5-flash")
     if gemini_key:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"

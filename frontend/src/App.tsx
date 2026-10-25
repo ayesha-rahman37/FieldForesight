@@ -12,6 +12,7 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { SecurityArchitecturePage } from './features/security-docs/SecurityArchitecturePage';
 import { YieldInsightsPage } from './pages/YieldInsightsPage';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { TopNavbar } from './components/layout/TopNavbar';
 
 const AppRoutes: React.FC = () => {
@@ -28,8 +29,22 @@ const AppRoutes: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/yield-insights" element={<YieldInsightsPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/yield-insights"
+            element={
+              <ProtectedRoute>
+                <YieldInsightsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/security" element={<SecurityArchitecturePage />} />
         </Routes>
       </div>
@@ -45,7 +60,7 @@ export const App: React.FC = () => {
         <AuthProvider>
           <ComingSoonProvider>
             <ChatProvider>
-              <ErrorBoundary>
+              <ErrorBoundary isPageLevel={true}>
                 <AppRoutes />
               </ErrorBoundary>
             </ChatProvider>

@@ -165,7 +165,43 @@ def generate_bangla_advisory_groq(
         fallback["llm_model"] = default_model
         return fallback
 
-    # 4. Live Mode (Enforces maximum live call quota before calling Groq)
+    # 4. Live Mode: Prioritize Gemini 1.5 Flash (1M TPM free tier) when configured, fallback to Groq
+    gemini_key = _get_env_fallback("GEMINI_API_KEY")
+    if gemini_key and mode == "live":
+        try:
+            gemini_model = _get_env_fallback("GEMINI_MODEL", "gemini-1.5-flash").strip()
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
+            payload = {
+                "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.25,
+                    "maxOutputTokens": 600,
+                    "responseMimeType": "application/json",
+                },
+            }
+            start_t = time.time()
+            resp = requests.post(url, json=payload, timeout=10)
+            if resp.status_code == 200:
+                candidates = resp.json().get("candidates", [])
+                if candidates:
+                    raw_json = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+                    parsed = json.loads(raw_json)
+                    latency = (time.time() - start_t) * 1000.0
+                    comp_tokens = estimate_tokens(raw_json)
+                    store_cached_response(gemini_model, messages, raw_json)
+                    log_token_usage("live", gemini_model, prompt_tokens, comp_tokens, cached=False, is_live=True, latency_ms=latency)
+                    return {
+                        "advisory_text": parsed.get("advisory_text", ""),
+                        "action_items": parsed.get("action_items", []),
+                        "precaution_alert": parsed.get("precaution_alert", ""),
+                        "llm_provider": "gemini",
+                        "llm_model": gemini_model,
+                    }
+        except Exception:
+            pass
+
+    # Fallback to Groq if Gemini key is absent or encounters error
     if api_key and mode == "live":
         register_live_call_intent(default_model)
 

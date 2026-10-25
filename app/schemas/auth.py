@@ -14,6 +14,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class GoogleOAuthRequest(BaseModel):
+    credential: str = Field(..., description="Google ID Token JWT or Authorization Code")
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
