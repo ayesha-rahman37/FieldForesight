@@ -1,241 +1,200 @@
-# FieldForesight (YieldMax)
+# FieldForesight
+### AI-Powered Agricultural Yield Prediction and Decision Support System
 
-AI-powered crop yield prediction platform for Bangladeshi farmers, built for the International AI Builders Congress 2026 — AgriSphere AI domain, YieldMax challenge.
+FieldForesight is an AI-powered agricultural decision support system designed to support crop yield forecasting and provide agriculture-related information through an intelligent chatbot. The platform combines machine learning, time-series forecasting, retrieval-augmented generation (RAG), and a web-based interface to help users explore agricultural insights.
 
-## Project Overview
+## Key Features
 
-FieldForesight predicts crop yield across seasons using historical yield data and time-series machine learning, combined with crop variety and cropping-type adjustments.
+- **Crop Yield Prediction:** Forecasts crop yield using trained Prophet time-series models.
+- **Multi-Crop and Regional Forecasting:** Includes trained models for 26 crop-region combinations.
+- **Historical Yield Data:** Stores and displays historical agricultural yield records.
+- **Agricultural Chatbot:** Provides agriculture-related responses using a LangGraph-based agent and Groq LLM.
+- **Retrieval-Augmented Generation (RAG):** Retrieves relevant information from an indexed agricultural knowledge collection using ChromaDB.
+- **Yield Insights Dashboard:** Presents agricultural information and prediction results through a web interface.
+- **REST API:** Provides backend services through FastAPI.
 
-The platform is designed to help farmers and agricultural stakeholders make data-driven yield decisions without requiring expensive hardware or sensors.
+## Technology Stack
 
-## Tech Stack
+### Frontend
+- React 19
+- TypeScript
+- Vite
 
-- **Backend:** FastAPI (Python)
-- **ML/Prediction:** Prophet (time-series forecasting)
-- **Database:** SQLite with SQLAlchemy ORM
-- **Frontend:** HTML, CSS, JavaScript, Bootstrap
-- **Model Serialization:** Joblib
-- **API Documentation:** FastAPI Swagger UI
+### Backend
+- Python
+- FastAPI
+- SQLAlchemy
+
+### Machine Learning and AI
+- Prophet for time-series forecasting
+- LangGraph for agent orchestration
+- Groq API for language model integration
+- ChromaDB for vector storage and retrieval
+- HashingVectorizer for text representation
+
+## System Architecture
+
+The application follows a frontend-backend architecture.
+
+1. The React frontend sends requests to the FastAPI backend.
+2. The backend processes prediction, historical data, and chatbot requests.
+3. Prophet models generate yield forecasts.
+4. The chatbot uses LangGraph to coordinate the AI workflow.
+5. The RAG service retrieves relevant indexed agricultural knowledge from ChromaDB.
+6. Results are returned to the frontend for presentation.
 
 ## Project Structure
 
 ```text
 FieldForesight/
-
-├── app/
-│   ├── main.py                         # FastAPI application entry point
-│   ├── database.py                     # Database configuration
-│   │
-│   ├── models/
-│   │   ├── schemas.py                  # Prediction request/response models
-│   │   ├── prediction_history.py       # Prediction history database model
-│   │   ├── user.py
-│   │   ├── role.py
-│   │   ├── session.py
-│   │   ├── user_preference.py
-│   │   ├── explainability_cache.py
-│   │   └── ndvi_cache.py
-│   │
-│   ├── routes/
-│   │   ├── prediction.py               # Yield prediction API
-│   │   ├── history.py                  # Prediction history API
-│   │   ├── crops.py                    # Crop API
-│   │   ├── regions.py                  # Region API
-│   │   ├── auth.py
-│   │   ├── explainability.py
-│   │   ├── scenario_planner.py
-│   │   ├── personalization.py
-│   │   ├── ndvi.py
-│   │   ├── community.py
-│   │   └── data_ownership.py
-│   │
-│   ├── services/
-│   │   ├── prediction_service.py       # Core prediction logic
-│   │   ├── adjustment_rules.py         # Variety and cropping adjustments
-│   │   ├── auth_service.py
-│   │   ├── explainability_service.py
-│   │   ├── scenario_planner_service.py
-│   │   ├── personalization_service.py
-│   │   ├── ndvi_service.py
-│   │   └── data_ownership_service.py
-│   │
-│   ├── data/                           # Dataset and trained model
-│   ├── templates/
-│   │   └── index.html                  # Web dashboard
-│   └── static/
-│       └── style.css                   # Frontend styling
 │
-├── train_model.py                      # Prophet model training
+├── app/
+│   ├── main.py
+│   ├── routes/
+│   ├── services/
+│   ├── data/
+│   └── ...
+│
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   └── ...
+│
 ├── requirements.txt
-└── .gitignore
+├── .env.example
+├── .gitignore
+└── README.md
 ```
 
-## Setup Instructions
+*Note: This is a simplified overview. Actual files and directories may vary.*
 
-### 1. Clone the repository
+## Installation and Setup
+
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ayesha-rahman37/FieldForesight.git
+git clone YOUR_GITHUB_REPOSITORY_URL
 cd FieldForesight
 ```
 
-### 2. Create and activate a virtual environment
+### 2. Create a Python Virtual Environment
 
 ```bash
-python -m venv venv
+python -m venv .venv
 ```
 
-Windows:
+Activate it on Windows:
 
-```bash
-venv\Scripts\activate
+```powershell
+.venv\Scripts\activate
 ```
 
-Mac/Linux:
-
-```bash
-source venv/bin/activate
-```
-
-### 3. Install dependencies
+### 3. Install Backend Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Train the model
+### 4. Configure Environment Variables
 
-**Important:** The trained model file is generated locally and is not tracked in git.
+Create a `.env` file in the project root and configure the required values.
 
-Make sure the required historical dataset is available and run:
+Example:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=openai/gpt-oss-120b
+CHATBOT_MAX_TOKENS=3000
+```
+
+Never commit your actual `.env` file or API keys to GitHub.
+
+### 5. Run the Backend
+
+From the project root:
 
 ```bash
-python train_model.py
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-The trained model will be saved as:
-
-```text
-app/data/trained_model.pkl
-```
-
-### 5. Run the server
-
-```bash
-uvicorn app.main:app --reload
-```
-
-The application will be available at:
+Backend URL:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-### 6. Open the web dashboard
-
-```text
-http://127.0.0.1:8000
-```
-
-### 7. Test the API
-
-Open:
+API documentation:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-## API Endpoints
+### 6. Install Frontend Dependencies
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/predict` | Returns crop yield prediction with confidence range |
-| GET | `/api/predictions/history` | Returns previous prediction records |
-| GET | `/api/crops` | Returns available crops |
-| GET | `/api/regions` | Returns available regions |
+Open another terminal:
 
-Additional modules are available for authentication, explainability, scenario planning, personalization, NDVI, community features, and data ownership.
-
-## Prediction API
-
-### Example Request
-
-```json
-{
-  "crop": "Rice",
-  "region": "Rangpur",
-  "variety": "HYV",
-  "cropping_type": "single"
-}
+```bash
+cd frontend
+npm install
 ```
 
-### Example Response
+### 7. Run the Frontend
 
-```json
-{
-  "predicted_yield": 4.89,
-  "lower_bound": 4.67,
-  "upper_bound": 5.10,
-  "message": "Yield prediction generated for Rice in Rangpur using HYV variety and single cropping."
-}
+```bash
+npm run dev
 ```
 
-## Prediction Logic
-
-The prediction system uses Prophet for time-series forecasting.
-
-The prediction pipeline is:
+Frontend URL:
 
 ```text
-Historical Yield Data
-        ↓
-Recent-Anomaly Weighting
-        ↓
-Prophet Forecasting
-        ↓
-Base Yield Prediction
-        ↓
-Variety Adjustment
-        ↓
-Cropping-Type Adjustment
-        ↓
-Final Prediction
-        ↓
-Prediction History
+http://localhost:5173
 ```
 
-### Variety Support
+## Model and Knowledge Base
 
-| Variety | Coefficient |
-|---|---:|
-| HYV | 1.00 |
-| Local | 0.82 |
+### Yield Forecasting
 
-### Cropping-Type Support
+Prophet time-series models are used for agricultural yield forecasting. The current training dataset contains:
 
-| Cropping Type | Coefficient |
-|---|---:|
-| Single | 1.00 |
-| Intercrop | 0.88 |
-| Rotation | 0.95 |
+- 260 historical yield records
+- 26 crop-region combinations
+- Historical years from 2015 to 2024
 
-## Prediction History
+Forecast performance depends on the availability, quality, and coverage of historical data.
 
-Each successful prediction is stored in the database.
+### Agricultural Knowledge Retrieval
 
-Stored information includes:
+The RAG component uses ChromaDB for persistent vector storage and a character n-gram HashingVectorizer for text representation.
 
-- Crop
-- Region
-- Variety
-- Cropping type
-- Predicted yield
-- Lower prediction bound
-- Upper prediction bound
-- Prediction timestamp
+The indexed knowledge collection currently contains:
 
-The stored records can be retrieved using:
+- 7 documents
+- 28 text chunks
 
-```text
-GET /api/predictions/history
-```
+Retrieved content is provided to the chatbot as contextual information for generating agriculture-related responses.
+
+## Limitations
+
+- Prediction quality depends on the available historical dataset and model performance.
+- Agricultural chatbot responses may require verification against authoritative agricultural guidelines.
+- Retrieved information may not cover every crop, region, or agricultural condition.
+- Source-level citations and complete document provenance are not currently guaranteed.
+- The Neo4j knowledge graph connection may require additional configuration; graph functionality should not be considered available unless the database is running and verified.
+
+## Future Improvements
+
+- Expand the historical agricultural dataset.
+- Improve forecasting evaluation and model validation.
+- Add verified agricultural sources and document-level citations.
+- Improve multilingual agricultural question answering.
+- Complete and validate knowledge graph integration.
+- Enhance deployment, monitoring, and scalability.
+
+## Disclaimer
+
+FieldForesight is an academic decision-support project. Its predictions and chatbot responses are intended for informational purposes and should not replace verified agricultural recommendations from qualified experts or official agricultural authorities.
+
+## License
+
+This project is developed for academic purposes. Add an appropriate open-source license before permitting external reuse.
