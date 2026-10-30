@@ -182,21 +182,62 @@ def tool_recommend_crop_varieties(crop: str, district: Optional[str] = None) -> 
         return _safe_json([{"error": f"Variety recommendation graph error: {str(exc)}"}])
 
 
+
 @tool
-def tool_search_agronomic_documents(query: str, crop: Optional[str] = None) -> str:
+def tool_search_agronomic_documents(
+    query: str,
+    crop: Optional[str] = None
+) -> str:
     """
-    Performs semantic vector search across official BARI, BRRI, and BJRI agricultural manuals
-    and publications stored in the ChromaDB vector database using multilingual sentence embeddings.
-    
+    Searches indexed agricultural documents in ChromaDB.
+
+    Returns retrieved text together with available document
+    title, source, page, section, crop, and relevance score.
+
     Args:
-        query: Specific agronomic question, topic, or practice (e.g., 'AWD irrigation method', 'urea fertilizer application', 'soil preparation').
-        crop: Optional crop name filter (Rice, Wheat, Potato, Maize, Mustard, Jute, Lentil).
+        query: Specific agricultural question or topic.
+        crop: Optional crop name filter.
     """
+
     try:
-        chunks = retrieve(query=query, crop=crop, k=3)
-        return _safe_json(chunks)
+
+        chunks = retrieve(
+            query=query,
+            crop=crop,
+            k=5,
+        )
+
+        if not chunks:
+
+            return _safe_json({
+                "status": "no_reliable_source_found",
+                "message": (
+                    "এই প্রশ্নের জন্য indexed documents-এ "
+                    "নির্ভরযোগ্য তথ্য পাওয়া যায়নি।"
+                ),
+                "results": [],
+            })
+
+        return _safe_json({
+            "status": "retrieved",
+            "query": query,
+            "results": chunks,
+            "instructions": (
+                "Use only the retrieved document text for "
+                "source-based agricultural recommendations. "
+                "Preserve exact numerical values and original units. "
+                "Never invent missing page numbers or source details."
+            ),
+        })
+
     except Exception as exc:
-        return _safe_json([{"error": f"Vector retrieval error: {str(exc)}"}])
+
+        return _safe_json({
+            "status": "retrieval_error",
+            "message": str(exc),
+            "results": [],
+        })
+
 
 
 ALL_AGENT_TOOLS = [

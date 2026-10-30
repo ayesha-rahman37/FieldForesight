@@ -1,3 +1,4 @@
+
 import api from './client';
 
 export interface ChatContextPayload {
@@ -21,7 +22,10 @@ export interface ChatMessageItem {
 export interface SendChatRequest {
   message: string;
   conversation_id?: string;
-  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  history?: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
   context?: ChatContextPayload;
   agent_mode?: boolean;
 }
@@ -36,123 +40,165 @@ export interface SendChatResponse {
 
 export type ChatStreamEvent =
   | { type: 'token'; text: string }
+  | { type: 'replace'; text: string }
   | { type: 'sources'; sources: string[] }
-  | { type: 'done' }
+  | {
+      type: 'done';
+      conversation_id?: string;
+      tools_used?: string[];
+      trace_steps?: string[];
+    }
   | { type: 'error'; message: string };
 
-/**
- * Sends a message to the AI Chat API (non-streaming full reply).
- */
 export const sendChatMessage = async (
   payload: SendChatRequest,
   signal?: AbortSignal
 ): Promise<SendChatResponse> => {
-  const endpoint = payload.agent_mode ? '/api/chat/agent' : '/api/chat';
-  const response = await api.post<SendChatResponse>(endpoint, payload, { signal });
+  const endpoint = payload.agent_mode
+    ? '/api/chat/agent'
+    : '/api/chat';
+
+  const response = await api.post<SendChatResponse>(
+    endpoint,
+    payload,
+    { signal }
+  );
+
   return response.data;
 };
 
-/**
- * Checks connectivity status of Neo4j Graph Database.
- */
-export const getGraphStatus = async (): Promise<{ status: string; uri?: string }> => {
+export const getGraphStatus = async (): Promise<{
+  status: string;
+  uri?: string;
+}> => {
   try {
-    const res = await api.get('/api/chat/graph/status');
-    return res.data;
+    const response = await api.get('/api/chat/graph/status');
+    return response.data;
   } catch {
     return { status: 'disconnected' };
   }
 };
 
-/**
- * Sends a message to the AI Chat API and streams tokens via SSE over POST.
- */
+function processSSEBlock(
+  block: string,
+  onEvent: (event: ChatStreamEvent) => void
+): void {
+
+  const dataLines = block
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).replace(/^ /, ''));
+
+  if (!dataLines.length) return;
+
+  const data = dataLines.join('\n').trim();
+
+  if (!data || data === '[DONE]') return;
+
+  try {
+    const event = JSON.parse(data) as ChatStreamEvent;
+    onEvent(event);
+  } catch (error) {
+    console.error('Invalid chat SSE event:', data, error);
+  }
+}
+
 export const streamChat = async (
   payload: SendChatRequest,
   onEvent: (event: ChatStreamEvent) => void,
   signal?: AbortSignal
 ): Promise<void> => {
+
   const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+
   const token = localStorage.getItem('access_token');
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    Accept: 'text/event-stream',
   };
+
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${baseURL}/api/chat/stream`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-    signal,
-  });
+  const response = await fetch(
+    `${baseURL}/api/chat/stream`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal,
+    }
+  );
 
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => null);
-    const error: any = new Error(errorBody?.detail || `HTTP Error ${res.status}`);
-    error.status = res.status;
-    error.response = { status: res.status, data: errorBody };
+  if (!response.ok) {
+
+    const body = await response.json().catch(() => null);
+
+    const error = new Error(
+      body?.detail || `Chat request failed: HTTP ${response.status}`
+    ) as Error & {
+      status?: number;
+      response?: unknown;
+    };
+
+    error.status = response.status;
+
+    error.response = {
+      status: response.status,
+      data: body,
+    };
+
     throw error;
   }
 
-  if (!res.body) {
-    throw new Error('No response body from server');
+  if (!response.body) {
+    throw new Error('The server returned an empty response stream.');
   }
 
-  const reader = res.body.getReader();
+  const reader = response.body.getReader();
+
   const decoder = new TextDecoder('utf-8');
+
   let buffer = '';
 
   try {
+
     while (true) {
-      const { done, value } = await reader.read();
+
+      const { value, done } = await reader.read();
+
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
 
-      const parts = buffer.split('\n\n');
-      buffer = parts.pop() ?? '';
+      buffer += decoder.decode(value, {
+        stream: true,
+      });
 
-      for (const part of parts) {
-        const lines = part.split(/\r?\n/);
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('data:')) {
-            const dataStr = trimmed.slice(5).trim();
-            if (dataStr) {
-              try {
-                const parsed = JSON.parse(dataStr) as ChatStreamEvent;
-                onEvent(parsed);
-              } catch (e) {
-                console.error('Failed to parse SSE JSON:', dataStr, e);
-              }
-            }
-          }
-        }
+      const blocks = buffer.split(/\r?\n\r?\n/);
+
+      buffer = blocks.pop() ?? '';
+
+      for (const block of blocks) {
+        processSSEBlock(block, onEvent);
       }
     }
+
+    // Flush remaining UTF-8 characters.
+    buffer += decoder.decode();
 
     if (buffer.trim()) {
-      const lines = buffer.split(/\r?\n/);
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('data:')) {
-          const dataStr = trimmed.slice(5).trim();
-          if (dataStr) {
-            try {
-              const parsed = JSON.parse(dataStr) as ChatStreamEvent;
-              onEvent(parsed);
-            } catch (e) {
-              console.error('Failed to parse SSE JSON from trailing buffer:', dataStr, e);
-            }
-          }
-        }
-      }
+      processSSEBlock(buffer, onEvent);
     }
-  } catch (err: any) {
-    if (signal?.aborted) {
-      return;
-    }
-    throw err;
+
+  } catch (error) {
+
+    if (signal?.aborted) return;
+
+    throw error;
+
+  } finally {
+
+    reader.releaseLock();
   }
 };
