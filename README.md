@@ -1,200 +1,202 @@
 # FieldForesight
 ### AI-Powered Agricultural Yield Prediction and Decision Support System
 
-FieldForesight is an AI-powered agricultural decision support system designed to support crop yield forecasting and provide agriculture-related information through an intelligent chatbot. The platform combines machine learning, time-series forecasting, retrieval-augmented generation (RAG), and a web-based interface to help users explore agricultural insights.
+FieldForesight is an academic agricultural decision-support platform that combines crop-yield forecasting, historical agricultural data, and an AI-assisted agricultural chatbot in a web application. It uses a React frontend and a FastAPI backend, with Prophet for time-series forecasting and a LangGraph/Groq-powered assistant supported by retrieval-augmented generation (RAG).
 
-## Key Features
+> **Important:** This is an academic prototype. Forecasts and chatbot responses should be independently checked before being used for real farming decisions.
 
-- **Crop Yield Prediction:** Forecasts crop yield using trained Prophet time-series models.
-- **Multi-Crop and Regional Forecasting:** Includes trained models for 26 crop-region combinations.
-- **Historical Yield Data:** Stores and displays historical agricultural yield records.
-- **Agricultural Chatbot:** Provides agriculture-related responses using a LangGraph-based agent and Groq LLM.
-- **Retrieval-Augmented Generation (RAG):** Retrieves relevant information from an indexed agricultural knowledge collection using ChromaDB.
-- **Yield Insights Dashboard:** Presents agricultural information and prediction results through a web interface.
-- **REST API:** Provides backend services through FastAPI.
+## Features
+
+- **Crop yield forecasting:** Time-series forecasts generated with trained Prophet models.
+- **Crop and region coverage:** The local training dataset was reported to cover 26 crop-region combinations.
+- **Historical yield records:** Historical agricultural data is loaded and exposed through backend APIs.
+- **Prediction history:** Previously generated prediction records can be viewed in the application.
+- **Agricultural chatbot:** A LangGraph agent uses a Groq-hosted language model to answer user questions.
+- **RAG-based knowledge retrieval:** ChromaDB stores indexed agricultural knowledge chunks represented using a character n-gram HashingVectorizer.
+- **Web dashboard:** React interface for accessing prediction and agricultural information.
+- **REST API:** FastAPI endpoints with interactive API documentation.
 
 ## Technology Stack
 
-### Frontend
-- React 19
-- TypeScript
-- Vite
+| Layer | Technologies |
+|---|---|
+| Frontend | React 19, TypeScript, Vite |
+| Backend | Python, FastAPI, SQLAlchemy |
+| Forecasting | Prophet |
+| Agent orchestration | LangGraph, LangChain |
+| LLM provider | Groq API |
+| Retrieval | ChromaDB, scikit-learn HashingVectorizer |
+| Database | SQLite by default; PostgreSQL can be configured through `DATABASE_URL` |
+| Optional graph integration | Neo4j |
 
-### Backend
-- Python
-- FastAPI
-- SQLAlchemy
+## Architecture Overview
 
-### Machine Learning and AI
-- Prophet for time-series forecasting
-- LangGraph for agent orchestration
-- Groq API for language model integration
-- ChromaDB for vector storage and retrieval
-- HashingVectorizer for text representation
+1. The React frontend sends HTTP requests to the FastAPI backend.
+2. The backend routes requests to prediction, history, and chatbot services.
+3. Prophet models generate crop-yield forecasts from historical time-series data.
+4. The LangGraph agent coordinates chatbot reasoning and its available tools.
+5. The RAG service retrieves relevant indexed text chunks from ChromaDB and supplies them as context to the agent.
+6. The backend returns results to the frontend.
 
-## System Architecture
+More technical details are available in [ARCHITECTURE.md](ARCHITECTURE.md) and [RAG_ARCHITECTURE.md](RAG_ARCHITECTURE.md).
 
-The application follows a frontend-backend architecture.
-
-1. The React frontend sends requests to the FastAPI backend.
-2. The backend processes prediction, historical data, and chatbot requests.
-3. Prophet models generate yield forecasts.
-4. The chatbot uses LangGraph to coordinate the AI workflow.
-5. The RAG service retrieves relevant indexed agricultural knowledge from ChromaDB.
-6. Results are returned to the frontend for presentation.
-
-## Project Structure
+## Repository Structure
 
 ```text
 FieldForesight/
-│
-├── app/
-│   ├── main.py
-│   ├── routes/
-│   ├── services/
-│   ├── data/
-│   └── ...
-│
-├── frontend/
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   └── ...
-│
-├── requirements.txt
+├── app/                 # FastAPI application, routes, models, services and scripts
+│   ├── data/            # Datasets and selected local model artifacts
+│   ├── models/          # SQLAlchemy models and schemas
+│   ├── routes/          # API route handlers
+│   ├── scripts/         # Data loading and RAG indexing scripts
+│   └── services/        # Prediction, LangGraph, RAG and supporting services
+├── frontend/            # React + TypeScript + Vite application
+├── alembic/             # Database migrations
+├── docs/knowledge/      # Markdown agricultural knowledge documents
+├── requirements.txt     # Python dependencies
+├── train_model.py       # Crop-region Prophet model training
+├── Dockerfile
+├── docker-compose.yml
 ├── .env.example
-├── .gitignore
 └── README.md
 ```
 
-*Note: This is a simplified overview. Actual files and directories may vary.*
+## Prerequisites
 
-## Installation and Setup
+- Python 3.11 recommended (the repository Dockerfile uses Python 3.11).
+- Node.js and npm compatible with the Vite version specified in `frontend/package.json`.
+- A Groq API key for LLM-powered chatbot functionality.
+- Optional: Docker and Docker Compose for the container configuration.
 
-### 1. Clone the Repository
+## Local Setup (Windows PowerShell)
 
-```bash
-git clone YOUR_GITHUB_REPOSITORY_URL
+### 1. Clone the repository
+
+```powershell
+git clone https://github.com/ayesha-rahman37/FieldForesight.git
 cd FieldForesight
 ```
 
-### 2. Create a Python Virtual Environment
-
-```bash
-python -m venv .venv
-```
-
-Activate it on Windows:
+### 2. Create and activate a Python virtual environment
 
 ```powershell
-.venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
-### 3. Install Backend Dependencies
+If PowerShell blocks activation, use `.venv\Scripts\python.exe` directly or adjust the local execution policy for the current user.
 
-```bash
+### 3. Install backend dependencies
+
+```powershell
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
+### 4. Configure environment variables
 
-Create a `.env` file in the project root and configure the required values.
+Create a local `.env` file from the example:
 
-Example:
-
-```env
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=openai/gpt-oss-120b
-CHATBOT_MAX_TOKENS=3000
+```powershell
+Copy-Item .env.example .env
 ```
 
-Never commit your actual `.env` file or API keys to GitHub.
+Open `.env` and add your own credentials. At minimum, set a valid `GROQ_API_KEY` for the chatbot. Never commit `.env` or real API credentials to GitHub.
 
-### 5. Run the Backend
+The example file documents Groq, database, frontend-origin, optional Sentinel Hub, Neo4j, and MCP configuration. Only configure optional integrations that you actually use.
 
-From the project root:
+### 5. Start the backend
 
-```bash
+From the repository root:
+
+```powershell
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Backend URL:
+- API base URL: http://127.0.0.1:8000
+- Interactive API documentation: http://127.0.0.1:8000/docs
 
-```text
-http://127.0.0.1:8000
-```
+At startup, the application initializes database tables and attempts to load seed data and connect to the configured graph service. A successful API startup does not mean every optional integration is available; review any startup warnings.
 
-API documentation:
+### 6. Install frontend dependencies
 
-```text
-http://127.0.0.1:8000/docs
-```
+Open a second terminal:
 
-### 6. Install Frontend Dependencies
-
-Open another terminal:
-
-```bash
+```powershell
 cd frontend
-npm install
+npm ci
 ```
 
-### 7. Run the Frontend
+### 7. Start the frontend
 
-```bash
+```powershell
 npm run dev
 ```
 
-Frontend URL:
+Open http://localhost:5173 in your browser.
 
-```text
-http://localhost:5173
+### 8. Build the frontend for production
+
+From the `frontend` directory:
+
+```powershell
+npm run build
 ```
 
-## Model and Knowledge Base
+The generated `frontend/dist/` directory is a build artifact and is intentionally excluded from Git.
 
-### Yield Forecasting
+## Training and Rebuilding Local Artifacts
 
-Prophet time-series models are used for agricultural yield forecasting. The current training dataset contains:
+### Prophet forecasting models
 
-- 260 historical yield records
-- 26 crop-region combinations
-- Historical years from 2015 to 2024
+The training script groups historical records by crop and region and saves a separate Prophet model for each supported combination under `app/data/models/`.
 
-Forecast performance depends on the availability, quality, and coverage of historical data.
+After the backend has initialized and the historical data is available in the configured database, run this command from the repository root:
 
-### Agricultural Knowledge Retrieval
+```powershell
+python train_model.py
+```
 
-The RAG component uses ChromaDB for persistent vector storage and a character n-gram HashingVectorizer for text representation.
+The local training snapshot used during development was reported as 260 historical records across 26 crop-region combinations for 2015–2024. This is a dataset description, not an accuracy guarantee. Validate models using held-out temporal data before relying on forecasts.
 
-The indexed knowledge collection currently contains:
+Model binary files (`.pkl`/`.joblib`) are excluded from normal Git tracking by `.gitignore`; retrain models locally when required. The current repository contains only selected model artifacts, not a guarantee that every crop-region model binary is included.
 
-- 7 documents
-- 28 text chunks
+### RAG knowledge index
 
-Retrieved content is provided to the chatbot as contextual information for generating agriculture-related responses.
+The agricultural Markdown knowledge files are stored in `docs/knowledge/`. The local ChromaDB collection directory is excluded from Git. To rebuild it from the checked-in Markdown files, run from the repository root:
+
+```powershell
+python -m app.scripts.build_rag_index
+```
+
+The development index was reported as 7 documents and 28 chunks. The generated index is local runtime data and is not automatically included in a fresh clone.
 
 ## Limitations
 
-- Prediction quality depends on the available historical dataset and model performance.
-- Agricultural chatbot responses may require verification against authoritative agricultural guidelines.
-- Retrieved information may not cover every crop, region, or agricultural condition.
-- Source-level citations and complete document provenance are not currently guaranteed.
-- The Neo4j knowledge graph connection may require additional configuration; graph functionality should not be considered available unless the database is running and verified.
+- Forecast reliability is constrained by the amount, coverage, and quality of historical data. Out-of-sample performance needs further validation.
+- Chatbot responses may be incorrect or incomplete. Fertilizer rates, pesticide guidance, and disease-treatment suggestions must be checked against current official agricultural recommendations.
+- Retrieved context does not guarantee source-level citations or complete document provenance in every chatbot response.
+- Neo4j is optional and requires a separately running, correctly configured graph database. Graph functions are unavailable when Neo4j cannot be reached.
+- A successful local development run does not constitute a production deployment or security review.
 
-## Future Improvements
+## Documentation
 
-- Expand the historical agricultural dataset.
-- Improve forecasting evaluation and model validation.
-- Add verified agricultural sources and document-level citations.
-- Improve multilingual agricultural question answering.
-- Complete and validate knowledge graph integration.
-- Enhance deployment, monitoring, and scalability.
+- [System Architecture](ARCHITECTURE.md)
+- [RAG Architecture](RAG_ARCHITECTURE.md)
+- [Prompt notes](PROMPTS.md)
+
+## Security Notes
+
+- Keep `.env`, API keys, database passwords, and private credentials out of version control.
+- Use unique, strong credentials for local and deployed services.
+- Do not expose development database ports or default credentials to the public internet.
+- The current source includes fallback development credentials for the MCP and Neo4j integrations, and the current Compose file includes example database credentials. Configure strong secrets through environment variables before exposing any service beyond localhost; remove hardcoded fallbacks before production deployment.
+- Rotate any credential that has ever been committed to a public repository.
 
 ## Disclaimer
 
-FieldForesight is an academic decision-support project. Its predictions and chatbot responses are intended for informational purposes and should not replace verified agricultural recommendations from qualified experts or official agricultural authorities.
+FieldForesight is an academic prototype intended for learning, demonstration, and decision-support research. It is not a substitute for official agricultural extension services, laboratory diagnosis, or qualified agronomic advice.
 
 ## License
 
-This project is developed for academic purposes. Add an appropriate open-source license before permitting external reuse.
+No license is currently specified. Unless a license is added to this repository, reuse and redistribution are not automatically granted.
